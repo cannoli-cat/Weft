@@ -1,0 +1,24 @@
+<UXML xmlns="UnityEngine.UIElements" xmlns:weft="Weft.Demos" editor-extension-mode="False">
+    <Style src="project://database/Assets/Weft/Demos/DemoScene.uss?fileID=7433441132597879392&amp;guid=6c508b4979137ed4fae5aff846e0b341&amp;type=3#DemoScene"/>
+    <VisualElement name="Root">
+        <VisualElement name="Header">
+            <Label name="Title" text="Weft Demo"/>
+            <DropdownField name="ExampleDropdown" label="Examples"/>
+        </VisualElement>
+        <VisualElement name="MainContent">
+            <VisualElement name="EditorArea">
+                <weft:ScriptEditor/>
+            </VisualElement>
+            <VisualElement name="ScriptButtonContainer">
+                <Button name="RunButton" text="Run"/>
+                <Button name="PauseButton" text="Stop"/>
+            </VisualElement>
+            <VisualElement name="ConsoleContainer">
+                <Label name="ConsoleHeader" text="Console"/>
+                <ScrollView name="ConsoleScroll">
+                    <Label name="Output" enable-rich-text="true"/>
+                </ScrollView>
+            </VisualElement>
+        </VisualElement>
+    </VisualElement>
+</UXML>

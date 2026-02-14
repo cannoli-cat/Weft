@@ -1,0 +1,211 @@
+namespace Weft.Demos {
+    public static class DemoScripts {
+        public struct Entry {
+            public string name;
+            public string code;
+        }
+
+        public static readonly Entry[] All = {
+            new() {
+                name = "Hello World",
+                code = @"// Hello World - the basics
+print(""Hello from Weft!"");
+print(""2 + 2 = "" + (2 + 2));
+"
+            },
+            new() {
+                name = "Variables & Math",
+                code = @"// Variables, arithmetic, and string concatenation
+var x = 10;
+var y = 3;
+
+print(""x = "" + x);
+print(""y = "" + y);
+print(""x + y = "" + (x + y));
+print(""x * y = "" + (x * y));
+print(""x / y = "" + (x / y));
+print(""x % y = "" + (x % y));
+
+var name = ""Weft"";
+print(""Hello, "" + name + ""!"");
+"
+            },
+            new() {
+                name = "Conditionals",
+                code = @"// If/else, comparisons, and logical operators
+var score = 85;
+
+if (score >= 90) {
+    print(""Grade: A"");
+} else if (score >= 80) {
+    print(""Grade: B"");
+} else {
+    print(""Grade: C or below"");
+}
+
+var isHigh = score > 80;
+var isPassing = score >= 60;
+print(""High score? "" + isHigh);
+print(""High AND passing? "" + (isHigh && isPassing));
+"
+            },
+            new() {
+                name = "While Loop",
+                code = @"// While loop: count to 5
+var i = 1;
+while (i <= 5) {
+    print(""i = "" + i);
+    i++;
+}
+print(""Done!"");
+"
+            },
+            new() {
+                name = "For Loop",
+                code = @"// For loop: sum of 1 to 10
+var total = 0;
+for (var i = 1; i <= 10; i++) {
+    total += i;
+}
+print(""Sum of 1..10 = "" + total);
+"
+            },
+            new() {
+                name = "Do-While Loop",
+                code = @"// Do-while: always runs at least once
+var n = 1;
+do {
+    print(""n = "" + n);
+    n *= 2;
+} while (n <= 16);
+print(""Final n = "" + n);
+"
+            },
+            new() {
+                name = "Break & Continue",
+                code = @"// Break exits the loop, continue skips to next iteration
+var i = 0;
+while (true) {
+    i++;
+    if (i % 2 == 0) {
+        continue; // skip even numbers
+    }
+    if (i > 10) {
+        break; // stop at 10
+    }
+    print(""odd: "" + i);
+}
+print(""Loop ended at i = "" + i);
+"
+            },
+            new() {
+                name = "Nested Loops",
+                code = @"// Multiplication table (1-4)
+for (var row = 1; row <= 4; row++) {
+    var line = """";
+    for (var col = 1; col <= 4; col++) {
+        line = line + (row * col) + ""\t"";
+    }
+    print(line);
+}
+"
+            },
+            new() {
+                name = "Increment & Assign",
+                code = @"// Increment, decrement, and augmented assignment
+var counter = 0;
+print(""start: "" + counter);
+
+counter++;
+print(""after ++: "" + counter);
+
+counter += 10;
+print(""after += 10: "" + counter);
+
+counter -= 3;
+print(""after -= 3: "" + counter);
+
+counter *= 2;
+print(""after *= 2: "" + counter);
+
+--counter;
+print(""after --: "" + counter);
+"
+            },
+            new() {
+                name = "Yielding (sleep)",
+                code = @"// sleep() pauses execution and resumes later
+print(""Starting countdown..."");
+
+print(""3..."");
+sleep(1);
+print(""2..."");
+sleep(1);
+print(""1..."");
+sleep(1);
+
+print(""Go!"");
+"
+            },
+            new() {
+                name = "Process Spawning",
+                code = @"// spawn() runs a new script concurrently
+spawn(""print(\""I am process A\""); sleep(1); print(\""A done\"");"");
+spawn(""print(\""I am process B\""); sleep(0.5); print(\""B done\"");"");
+
+print(""Main script spawned two processes."");
+print(""B finishes first because it sleeps less.\n"");
+"
+            },
+            new() {
+                name = "Inventory Example",
+                code = @"// Inventory example using custom module
+addItem(""apple"", 3);
+addItem(""banana"", 2);
+addItem(""apple"", 1);
+
+print(""Has apple? "" + hasItem(""apple""));
+print(""Has sword? "" + hasItem(""sword""));
+
+printInventory();
+
+removeItem(""banana"", 2);
+print(""After removing bananas:"");
+printInventory();
+"
+            },
+            new() {
+                name = "Collections",
+                code = @"// Arrays: create, access, modify
+var fruits = [""apple"", ""banana"", ""cherry""];
+print(""Length: "" + fruits.length);
+print(""First: "" + fruits[0]);
+print(""Last: "" + fruits[2]);
+
+// modify by index
+fruits[1] = ""blueberry"";
+print(""After swap: "" + fruits[1]);
+
+// push and pop
+fruits.push(""dragonfruit"");
+print(""After push, length: "" + fruits.length);
+
+var removed = fruits.pop();
+print(""Popped: "" + removed);
+
+// loop over an array
+for (var i = 0; i < fruits.length; i++) {
+    print(i + "": "" + fruits[i]);
+}
+
+// remove by index
+fruits.remove(0);
+print(""After removing index 0:"");
+for (var i = 0; i < fruits.length; i++) {
+    print(""  "" + fruits[i]);
+}
+"
+            },
+        };
+    }
+}

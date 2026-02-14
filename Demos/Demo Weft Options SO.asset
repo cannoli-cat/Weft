@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be4bd0cc858583e489e6c1e619d2c269, type: 3}
+  m_Name: Demo Weft Options SO
+  m_EditorClassIdentifier: Assembly-CSharp::Weft.Unity.Engine.WeftOptionsSO
+  core: 1
+  conditionals: 1
+  loops: 1
+  augmentedAssignment: 1
+  time: 1
+  processes: 1
+  collections: 1
+  customModules:
+  - {fileID: 11400000, guid: f7639ab79b2cd354aac853c2e4d394bf, type: 2}
+  gasPerStep: 2000
+  deterministic: 0
