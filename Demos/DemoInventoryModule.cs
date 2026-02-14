@@ -36,8 +36,8 @@ namespace Weft.Demos {
         }
 
         public void Setup(ScriptContext ctx) {
-            if (ctx.gameObject == null) return;
-            var inv = ctx.gameObject.GetComponent<DemoInventory>();
+            if (ctx.GameObject == null) return;
+            var inv = ctx.GameObject.GetComponent<DemoInventory>();
             if (inv != null)
                 ctx.Services.Add(inv);
         }

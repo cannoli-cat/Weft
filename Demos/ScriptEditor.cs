@@ -284,7 +284,7 @@ namespace Weft.Demos {
 
             var services = new WeftServiceProvider().Add(consoleService);
             var ctx = new ScriptContext(WeftEngine.Instance.Options.Capabilities) {
-                gameObject = ScriptTarget,
+                GameObject = ScriptTarget,
                 Services = services
             };
 

@@ -1,6 +1,7 @@
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Weft.Unity.Engine;
 
 namespace Weft.Demos {
     [RequireComponent(typeof(UIDocument))]
@@ -11,10 +12,18 @@ namespace Weft.Demos {
 
         private void OnEnable() {
             CreateScriptTarget();
-
+            
             var doc = GetComponent<UIDocument>();
             var root = doc.rootVisualElement;
             root.schedule.Execute(() => Init(root));
+        }
+        
+        private static void PreCacheDemoScripts() {
+            foreach (var demo in DemoScripts.All) {
+                WeftEngine.TryRun(demo.code, new ScriptContext(WeftEngine.Instance.Options.Capabilities));
+            }
+        
+            Debug.Log($"[Weft Demo] Pre-cached {DemoScripts.All.Length} scripts");
         }
 
         private void Init(VisualElement root) {
@@ -33,6 +42,8 @@ namespace Weft.Demos {
                 dropdown.SetValueWithoutNotify(DemoScripts.All[0].name);
                 LoadScript(DemoScripts.All[0].code);
             }
+            
+            PreCacheDemoScripts();
         }
 
         private void OnExampleChanged(ChangeEvent<string> evt) {
