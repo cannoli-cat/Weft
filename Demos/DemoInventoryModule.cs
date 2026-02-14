@@ -22,7 +22,7 @@ namespace Weft.Demos {
             registrar.Bind("removeItem", (ctx, args) =>
                 ctx.Resolve<DemoInventory>().Remove((string)args[0], (int)(double)args[1]));
 
-            registrar.Bind("printInventory", (ctx, args) => {
+            registrar.Bind("printInventory", (ctx, _) => {
                 var inv = ctx.Resolve<DemoInventory>();
                 var console = ctx.Resolve<WeftConsoleService>();
                 if (inv.Items.Count == 0) {
@@ -39,7 +39,7 @@ namespace Weft.Demos {
             if (ctx.gameObject == null) return;
             var inv = ctx.gameObject.GetComponent<DemoInventory>();
             if (inv != null)
-                (ctx.Services as WeftServiceProvider)?.Add(inv);
+                ctx.Services.Add(inv);
         }
     }
 }

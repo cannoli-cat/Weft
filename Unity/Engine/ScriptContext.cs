@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using Weft.Runtime;
+using Weft.Runtime.Services;
 
 namespace Weft.Unity.Engine {
     public class ScriptContext {
@@ -8,7 +9,7 @@ namespace Weft.Unity.Engine {
         public Transform transform => gameObject.transform;
         public WeftCapabilities Caps { get; private set; } = WeftCapabilities.None();
         public int Pid { get; set; }
-        public IServiceProvider Services { get; set; }
+        public WeftServiceProvider Services { get; set; }
 
         public T Resolve<T>() => (T)Services?.GetService(typeof(T));
         
