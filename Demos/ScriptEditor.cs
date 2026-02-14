@@ -277,13 +277,6 @@ namespace Weft.Demos {
                 return;
             }
 
-            var lex = Lexer.Tokenize(script);
-            if (lex.HasError) { PrintToConsole($"ERR: {lex.Error}", true); return; }
-
-            var parser = new Parser(WeftEngine.Instance.Options.Features);
-            var parse = parser.Parse(lex.Tokens);
-            if (parse.HasError) { PrintToConsole($"ERR: {parse.Error}", true); return; }
-            
             var consoleService = new WeftConsoleService((msg, isErr) => {
                 if (msg == "__CLEAR__") { consoleLabel.text = string.Empty; return; }
                 PrintToConsole(msg, isErr);
@@ -291,11 +284,18 @@ namespace Weft.Demos {
 
             var services = new WeftServiceProvider().Add(consoleService);
             var ctx = new ScriptContext(WeftEngine.Instance.Options.Capabilities) {
-                gameObject = ScriptTarget,  // the target with DemoInventory, etc.
+                gameObject = ScriptTarget,
                 Services = services
             };
 
-            runningPid = WeftEngine.Instance.Spawn(parse.Nodes, ctx);
+            var (pid, error) = WeftEngine.TryRun(script, ctx);
+            if (error != null) {
+                PrintToConsole($"ERR: {error}", true); 
+                return;
+            }
+            
+            runningPid = pid;
+            
             PrintToConsole($"spawned pid {runningPid}");
         }
 
