@@ -6,28 +6,33 @@ using Weft.Runtime.Modules;
 namespace Weft.Unity.Engine {
     [CreateAssetMenu(menuName = "Weft/Engine Options")]
     public sealed class WeftOptionsSO : ScriptableObject {
-        [Header("Built-in Modules")] [Tooltip("Variables, print, clear — almost always on")]
+        [Header("Built-in Modules")]
+        [Tooltip("Variables, print, clear — almost always on")]
         public bool core = true;
 
-        [Tooltip("if / else")] public bool conditionals = true;
+        [Tooltip("if / else")]
+        public bool conditionals = true;
 
         [Tooltip("while / for / do-while / break / continue")]
         public bool loops = true;
 
-        [Tooltip("+= -= *= /= %=")] public bool augmentedAssignment = true;
+        [Tooltip("+= -= *= /= %=")]
+        public bool augmentedAssignment = true;
 
-        [Tooltip("sleep(seconds)")] public bool time = true;
+        [Tooltip("sleep(seconds)")]
+        public bool time = true;
 
         [Tooltip("spawn / kill / ps / await_pid")]
         public bool processes = false;
-        
-        [Tooltip("push / pop / remove")]
+
+        [Tooltip("arrays, push / pop / remove, index access")]
         public bool collections = false;
 
         [Header("Custom Modules (drop your ScriptableObject modules here)")]
         public WeftModuleSO[] customModules;
 
-        [Header("Limits")] public int gasPerStep = 2000;
+        [Header("Limits")]
+        public int gasPerStep = 2000;
         public bool deterministic = false;
 
         public WeftOptions ToRuntime() {

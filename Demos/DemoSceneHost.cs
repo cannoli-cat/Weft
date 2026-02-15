@@ -1,7 +1,6 @@
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
-using Weft.Unity.Engine;
 
 namespace Weft.Demos {
     [RequireComponent(typeof(UIDocument))]
@@ -16,14 +15,6 @@ namespace Weft.Demos {
             var doc = GetComponent<UIDocument>();
             var root = doc.rootVisualElement;
             root.schedule.Execute(() => Init(root));
-        }
-        
-        private static void PreCacheDemoScripts() {
-            foreach (var demo in DemoScripts.All) {
-                WeftEngine.TryRun(demo.code, new ScriptContext(WeftEngine.Instance.Options.Capabilities));
-            }
-        
-            Debug.Log($"[Weft Demo] Pre-cached {DemoScripts.All.Length} scripts");
         }
 
         private void Init(VisualElement root) {
@@ -42,8 +33,6 @@ namespace Weft.Demos {
                 dropdown.SetValueWithoutNotify(DemoScripts.All[0].name);
                 LoadScript(DemoScripts.All[0].code);
             }
-            
-            PreCacheDemoScripts();
         }
 
         private void OnExampleChanged(ChangeEvent<string> evt) {
@@ -56,16 +45,10 @@ namespace Weft.Demos {
             editor?.SetScript(code);
         }
 
-        /// <summary>
-        /// Creates a GameObject that represents the "thing" scripts run on.
-        /// In a real game this would be the NPC/player/object, here it's a
-        /// demo stand-in with all the components scripts might need.
-        /// </summary>
         private void CreateScriptTarget() {
             if (scriptTarget != null) return;
             scriptTarget = new GameObject("[ScriptTarget]");
             scriptTarget.AddComponent<DemoInventory>();
-            // add more demo components here as you add modules
         }
 
         private void OnDestroy() {

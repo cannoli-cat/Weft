@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Weft.Language.Lexing;
-using Weft.Language.Parsing;
 using Weft.Runtime.Binding;
 using Weft.Runtime.Scheduling;
 using Weft.Runtime.Services;
@@ -25,12 +23,6 @@ namespace Weft.Runtime.Modules {
                 var engine = WeftEngine.Instance;
                 if (engine == null) throw new InvalidOperationException("WeftEngine not available.");
 
-                var lex = Lexer.Tokenize(source);
-                if (lex.HasError) throw new Exception($"spawn lex error: {lex.Error}");
-
-                var parse = new Parser(engine.Options.Features).Parse(lex.Tokens);
-                if (parse.HasError) throw new Exception($"spawn parse error: {parse.Error}");
-
                 // inherit the caller's console so output goes to the same place
                 WeftConsoleService console = null;
                 if (ctx.Services is WeftServiceProvider sp)
@@ -46,7 +38,8 @@ namespace Weft.Runtime.Modules {
                     Services = childServices
                 };
 
-                var pid = engine.Spawn(parse.Nodes, childCtx);
+                var (pid, error) = WeftEngine.TryRun(source, childCtx);
+                if (error != null) throw new Exception($"spawn error: {error}");
                 return (double)pid;
             });
 
@@ -63,7 +56,6 @@ namespace Weft.Runtime.Modules {
                     foreach (var p in list)
                         result.Add(new Dictionary<string, object> {
                             ["pid"] = p.Pid,
-                            ["pc"] = p.PC,
                             ["done"] = p.Completed
                         });
                 }

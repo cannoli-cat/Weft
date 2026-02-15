@@ -32,6 +32,46 @@ namespace Weft.Runtime.Modules {
                 }
                 throw new System.Exception("remove() requires an array and index.");
             });
+            
+            registrar.Bind("__array_new", (_, args) => {
+                var list = new List<object>(args.Length);
+                for (var i = 0; i < args.Length; i++)
+                    list.Add(args[i]);
+                return list;
+            });
+
+            registrar.Bind("__index_get", (_, args) => {
+                if (args[0] is List<object> list && args[1] is double d) {
+                    var i = (int)d;
+                    if (i < 0 || i >= list.Count)
+                        throw new System.Exception($"Index {i} out of range (length {list.Count}).");
+                    return list[i];
+                }
+                throw new System.Exception("Index access requires an array and numeric index.");
+            });
+
+            registrar.Bind("__index_set", (_, args) => {
+                if (args[0] is List<object> list && args[1] is double d) {
+                    var i = (int)d;
+                    if (i < 0 || i >= list.Count)
+                        throw new System.Exception($"Index {i} out of range (length {list.Count}).");
+                    list[i] = args[2];
+                    return null;
+                }
+                throw new System.Exception("Index assignment requires an array and numeric index.");
+            });
+
+            registrar.Bind("__member_get", (_, args) => {
+                var memberName = (string)args[1];
+
+                if (args[0] is List<object> list) {
+                    if (memberName == "length")
+                        return (double)list.Count;
+                    throw new System.Exception($"Unknown array member '{memberName}'.");
+                }
+
+                throw new System.Exception($"Unknown member '{memberName}' on {args[0]?.GetType().Name ?? "null"}.");
+            });
         }
 
         public void Setup(ScriptContext ctx) { }

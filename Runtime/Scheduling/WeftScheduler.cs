@@ -1,12 +1,10 @@
 ﻿using System.Collections.Generic;
-using Weft.Language.AST;
 using Weft.Runtime.Services;
-using Weft.Unity.Engine;
 using Weft.Unity.Services;
 
 namespace Weft.Runtime.Scheduling {
     public sealed class WeftScheduler {
-        private readonly List<WeftProcess> processes = new();
+        private readonly List<IWeftProcess> processes = new();
 
         private readonly ITimeService time = new WeftUnityTimeService();
 
@@ -20,15 +18,14 @@ namespace Weft.Runtime.Scheduling {
                 }
                 
                 if (p.ResumeAt > 0 && time.Now < p.ResumeAt) 
-                    continue; // still sleeping
+                    continue;
                 
-                // PID wait; skip if target is still running
                 if (p.WaitingForPid >= 0) {
                     var target = processes.Find(o => o.Pid == p.WaitingForPid);
                     if (target is { Completed: false })
                         continue;
                     
-                    p.WaitingForPid = -1; // target done or gone, clear and resume
+                    p.WaitingForPid = -1;
                 }
 
                 var res = p.Step();
@@ -39,7 +36,7 @@ namespace Weft.Runtime.Scheduling {
             }
         }
         
-        private static void TryReportError(WeftProcess p, string error) {
+        private static void TryReportError(IWeftProcess p, string error) {
             try {
                 if (p.Context?.Services is WeftServiceProvider sp &&
                     sp.TryGet<WeftConsoleService>(out var console)) {
@@ -52,15 +49,17 @@ namespace Weft.Runtime.Scheduling {
             }
         }
 
-        public int Spawn(List<AstNode> program, ScriptContext ctx, int gasPerStep) {
-            var proc = new WeftProcess(program, ctx, gasPerStep);
-            ctx.Pid = proc.Pid;
+        /// <summary>
+        /// Spawn any process that implements IWeftProcess.
+        /// </summary>
+        public int Spawn(IWeftProcess proc) {
+            proc.Context.Pid = proc.Pid;
             processes.Add(proc);
             return proc.Pid;
         }
-        
+
         public bool Kill(int pid) => processes.RemoveAll(p => p.Pid == pid) > 0;
 
-        public IReadOnlyList<WeftProcess> Ps() => processes;
+        public IReadOnlyList<IWeftProcess> Ps() => processes;
     }
 }
