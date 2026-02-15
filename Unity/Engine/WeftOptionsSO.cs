@@ -28,6 +28,9 @@ namespace Weft.Unity.Engine {
         [Tooltip("arrays, push / pop / remove, index access")]
         public bool collections = false;
 
+        [Tooltip("func / return")]
+        public bool functions = false;
+
         [Header("Custom Modules (drop your ScriptableObject modules here)")]
         public WeftModuleSO[] customModules;
 
@@ -45,6 +48,7 @@ namespace Weft.Unity.Engine {
             if (time) modules.Add(new TimeModule());
             if (processes) modules.Add(new ProcessModule());
             if (collections) modules.Add(new CollectionsModule());
+            if (functions) modules.Add(new FunctionsModule());
 
             if (customModules != null) {
                 foreach (var custom in customModules) {

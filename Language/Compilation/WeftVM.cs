@@ -52,6 +52,28 @@ namespace Weft.Language.Compilation {
                 var op = (Op)code[pc++];
 
                 switch (op) {
+                    case Op.CallFunc:
+                        var startPc = code[pc++];
+                        var arity = code[pc++];
+                        
+                        frames[frameCount++] = new CallFrame {
+                            returnPc = pc,
+                            baseSlot = sp - arity
+                        };
+                        
+                        pc = startPc;
+                        break;
+                    
+                    case Op.Return:
+                        var retVal = stack[--sp];
+                        var frame = frames[--frameCount];
+                        
+                        sp = frame.baseSlot;
+                        pc = frame.returnPc;
+                        
+                        stack[sp++] = retVal;
+                        break;
+                    
                     case Op.Const:
                         stack[sp++] = constants[code[pc++]];
                         break;
@@ -186,7 +208,7 @@ namespace Weft.Language.Compilation {
                                 switch (y) {
                                     case YieldForSeconds ys: {
                                         var time = context.Resolve<ITimeService>();
-                                        stack[sp++] = null; // push null as the call result
+                                        stack[sp++] = null;
                                         return ExecutionResult.YieldUntil(time.Now + ys.Seconds);
                                     }
                                     case YieldForProcess yp:

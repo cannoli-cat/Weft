@@ -9,6 +9,7 @@ namespace Weft.Language.Compilation {
         private int scopeDepth;
         
         private readonly Stack<LoopContext> loopStack = new();
+        private readonly Dictionary<string, (int pc, int arity)> funcMetaData = new();
 
         private struct Local {
             public string name;
@@ -35,6 +36,16 @@ namespace Weft.Language.Compilation {
         
         private void CompileStatement(AstNode node) {
             switch (node) {
+                case FuncDeclNode fd:
+                    CompileFuncDecl(fd);
+                    break;
+                
+                case ReturnNode ret:
+                    if (ret.Value != null) CompileExpression(ret.Value);
+                    else chunk.Emit(Op.Const, chunk.AddConstant(null));
+                    chunk.Emit(Op.Return);
+                    break;
+                
                 case VarNode v:
                     CompileExpression(v.Value);
                     AddLocal(v.Name);
@@ -44,12 +55,12 @@ namespace Weft.Language.Compilation {
                     CompileExpression(a.Value);
                     var assignSlot = ResolveLocal(a.Name);
                     chunk.Emit(Op.StoreLocal, assignSlot);
-                    chunk.Emit(Op.Pop); // statement, discard the peeked value
+                    chunk.Emit(Op.Pop);
                     break;
 
                 case ExprStmtNode es:
                     CompileExpression(es.Expr);
-                    chunk.Emit(Op.Pop); // discard expression result
+                    chunk.Emit(Op.Pop);
                     break;
 
                 case IfNode ifn:
@@ -165,7 +176,6 @@ namespace Weft.Language.Compilation {
         }
         
         private void CompileBinary(BinaryOperationNode bin) {
-            // Short-circuit: && and ||
             if (bin.Operator == "&&") {
                 CompileExpression(bin.Left);
                 var jumpToFalse = EmitJump(Op.JumpIfFalse);
@@ -230,8 +240,13 @@ namespace Weft.Language.Compilation {
             foreach (var arg in call.Arguments)
                 CompileExpression(arg);
 
-            var nameIdx = chunk.AddConstant(call.FunctionName);
-            chunk.Emit(Op.Call, nameIdx, call.Arguments.Count);
+            if (funcMetaData.TryGetValue(call.FunctionName, out var meta)) {
+                chunk.Emit(Op.CallFunc, meta.pc, meta.arity);
+            } 
+            else {
+                var nameIdx = chunk.AddConstant(call.FunctionName);
+                chunk.Emit(Op.Call, nameIdx, call.Arguments.Count);
+            }
         }
         
         private void CompileIf(IfNode ifn) {
@@ -312,6 +327,33 @@ namespace Weft.Language.Compilation {
             PatchJump(jumpBack, loopStart);
 
             PopLoop(ctx);
+        }
+        
+        private void CompileFuncDecl(FuncDeclNode fd) {
+            var skipJump = EmitJump(Op.Jump);
+
+            var funcStart = chunk.code.Count;
+            funcMetaData[fd.Name] = (funcStart, fd.Parameters.Count);
+            
+            var outerLocals = new List<Local>(locals);
+            var outerDepth = scopeDepth;
+            locals.Clear();
+            scopeDepth = 0;
+            
+            foreach (var param in fd.Parameters)
+                AddLocal(param);
+            
+            foreach (var stmt in fd.Body.Statements)
+                CompileStatement(stmt);
+            
+            chunk.Emit(Op.Const, chunk.AddConstant(null));
+            chunk.Emit(Op.Return);
+            
+            locals.Clear();
+            locals.AddRange(outerLocals);
+            scopeDepth = outerDepth;
+
+            PatchJump(skipJump);
         }
 
         private void CompileBreak() {

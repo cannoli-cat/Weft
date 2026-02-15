@@ -32,7 +32,8 @@ namespace Weft.Unity.Engine {
             new LoopsModule(),
             new AugAssignModule(),
             new TimeModule(),
-            new CollectionsModule()
+            new CollectionsModule(),
+            new FunctionsModule()
         });
 
         public WeftOptions With(WeftLimits limits = null,

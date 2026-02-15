@@ -19,6 +19,7 @@ MonoBehaviour:
   time: 1
   processes: 1
   collections: 1
+  functions: 1
   customModules:
   - {fileID: 11400000, guid: f7639ab79b2cd354aac853c2e4d394bf, type: 2}
   gasPerStep: 2000

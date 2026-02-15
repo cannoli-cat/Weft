@@ -206,6 +206,53 @@ for (var i = 0; i < fruits.length; i++) {
 }
 "
             },
+            new() {
+                name = "Functions",
+                code = @"// User defined functions
+func add(a, b) {
+    return a + b;
+}
+
+func greet(name) {
+    print(""Hello, "" + name + ""!"");
+}
+
+greet(""Weft"");
+print(""3 + 5 = "" + add(3, 5));
+
+// functions calling functions
+func square(x) {
+    return x * x;
+}
+
+func sumOfSquares(a, b) {
+    return add(square(a), square(b));
+}
+
+print(""3² + 4² = "" + sumOfSquares(3, 4));
+"
+            },
+            new() {
+                name = "Recursion",
+                code = @"// Recursive functions
+func fib(n) {
+    if (n <= 1) { return n; }
+    return fib(n - 1) + fib(n - 2);
+}
+
+for (var i = 0; i < 10; i++) {
+    print(""fib("" + i + "") = "" + fib(i));
+}
+
+func factorial(n) {
+    if (n <= 1) { return 1; }
+    return n * factorial(n - 1);
+}
+
+print(""5! = "" + factorial(5));
+print(""10! = "" + factorial(10));
+"
+            },
         };
     }
 }

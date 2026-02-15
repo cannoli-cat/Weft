@@ -6,11 +6,11 @@ namespace Weft.Language.Compilation {
         public readonly List<object> constants = new();
 
         public int AddConstant(object value) {
-            // deduplicate constants to save space
             for (var i = 0; i < constants.Count; i++) {
                 if (Equals(constants[i], value))
                     return i;
             }
+            
             constants.Add(value);
             return constants.Count - 1;
         }

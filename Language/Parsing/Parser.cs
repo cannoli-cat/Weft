@@ -230,10 +230,13 @@ namespace Weft.Language.Parsing {
             Advance(); // skip 'var'
             var nameToken = Consume(TokenType.Identifier, result, "Expected variable name");
             if (result.HasError) return null;
+            
             Consume(TokenType.Operator, "=", result, "Expected '=' after variable name");
             if (result.HasError) return null;
+            
             var expr = ParseExpression(result);
             if (result.HasError) return null;
+            
             Consume(TokenType.Symbol, ";", result, "Expected ';' after variable declaration");
             return result.HasError ? null : new VarNode(nameToken.Value, expr);
         }
@@ -284,6 +287,7 @@ namespace Weft.Language.Parsing {
 
             Consume(TokenType.Keyword, "while", res, "Expected 'while' after do-block");
             if (res.HasError) return null;
+            
             Consume(TokenType.Symbol, "(", res, "Expected '(' after 'while'");
             if (res.HasError) return null;
 
@@ -309,6 +313,7 @@ namespace Weft.Language.Parsing {
             // condition
             var cond = ParseExpression(res);
             if (res.HasError) return null;
+            
             Consume(TokenType.Symbol, ";", res, "Expected ';' after for-condition");
             if (res.HasError) return null;
 
@@ -526,7 +531,6 @@ namespace Weft.Language.Parsing {
                     var member = Consume(TokenType.Identifier, res, "Expected member name after '.'");
                     if (res.HasError) return null;
 
-                    // method call: list.push(x)
                     if (Match(TokenType.Symbol, "(")) {
                         var args = new List<AstNode>();
                         if (!Match(TokenType.Symbol, ")")) {

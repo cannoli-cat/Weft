@@ -11,7 +11,7 @@
 
         public static WeftLimits Default { get; } = new();
 
-        public WeftLimits Clone() => new WeftLimits {
+        public WeftLimits Clone() => new() {
             GasPerStep = GasPerStep, MaxCallDepth = MaxCallDepth, MaxHeapBytes = MaxHeapBytes,
             Deterministic = Deterministic, DefaultRps = DefaultRps, DefaultBurst = DefaultBurst
         };

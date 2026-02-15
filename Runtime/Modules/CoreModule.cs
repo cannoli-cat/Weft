@@ -18,7 +18,7 @@ namespace Weft.Runtime.Modules {
                 return null;
             });
 
-            registrar.Bind("clear", (ctx, args) => {
+            registrar.Bind("clear", (ctx, _) => {
                 var console = ctx.Resolve<WeftConsoleService>();
                 console?.Clear();
                 return null;
