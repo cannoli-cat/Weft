@@ -12,8 +12,15 @@ namespace Weft.Language.Compilation {
         private int pc;
         private WeftChunk chunk;
         private ScriptContext context;
+        private CallFrame[] frames = new CallFrame[64];
+        private int frameCount;
 
         public bool Completed { get; private set; }
+
+        private struct CallFrame {
+            public int returnPc;
+            public int baseSlot;
+        }
 
         public void Load(WeftChunk compiled, ScriptContext ctx) {
             chunk = compiled;
@@ -21,6 +28,8 @@ namespace Weft.Language.Compilation {
             pc = 0;
             sp = 0;
             Completed = false;
+            frameCount = 1;
+            frames[0] = new CallFrame { returnPc = -1, baseSlot = 0};
         }
 
         /// <summary>
@@ -52,11 +61,11 @@ namespace Weft.Language.Compilation {
                         break;
 
                     case Op.LoadLocal:
-                        stack[sp++] = stack[code[pc++]];
+                        stack[sp++] = stack[frames[frameCount - 1].baseSlot + code[pc++]];
                         break;
 
                     case Op.StoreLocal:
-                        stack[code[pc++]] = stack[sp - 1];
+                        stack[frames[frameCount - 1].baseSlot + code[pc++]] = stack[sp - 1];
                         break;
 
                     case Op.Add: {

@@ -8,7 +8,7 @@ namespace Weft.Language.Lexing {
             "var", "if", "else", "true", "false",
             "do", "while", "for",
             "return", "break",
-            "continue", "func", "on"
+            "continue", "func",
         };
         
         // tokenizes the input string into a LexerResult containing tokens an dany error

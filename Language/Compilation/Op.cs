@@ -17,7 +17,9 @@ namespace Weft.Language.Compilation {
         JumpIfTrue,
 
         Call,
-
         Halt,
+        
+        CallFunc,
+        Return,
     }
 }

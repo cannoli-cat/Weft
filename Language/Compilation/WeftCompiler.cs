@@ -7,8 +7,7 @@ namespace Weft.Language.Compilation {
         private WeftChunk chunk;
         private readonly List<Local> locals = new();
         private int scopeDepth;
-
-        // Break/continue support: stack of loop contexts
+        
         private readonly Stack<LoopContext> loopStack = new();
 
         private struct Local {
@@ -17,8 +16,8 @@ namespace Weft.Language.Compilation {
         }
 
         private struct LoopContext {
-            public int continueTarget;        // pc to jump to on 'continue'
-            public List<int> breakJumps;      // jump offsets to patch when loop ends
+            public int continueTarget;       
+            public List<int> breakJumps;
         }
 
         public WeftChunk Compile(List<AstNode> program) {
@@ -33,11 +32,7 @@ namespace Weft.Language.Compilation {
             chunk.Emit(Op.Halt);
             return chunk;
         }
-
-        // ------------------------------------------------------------------
-        //  Statements (don't leave values on stack)
-        // ------------------------------------------------------------------
-
+        
         private void CompileStatement(AstNode node) {
             switch (node) {
                 case VarNode v:
@@ -89,27 +84,21 @@ namespace Weft.Language.Compilation {
                     CompileExpression(idx.Target);
                     CompileExpression(idx.Index);
                     CompileExpression(idx.Value);
-                    // Use a host call: __index_set(target, index, value)
                     var setIdx = chunk.AddConstant("__index_set");
                     chunk.Emit(Op.Call, setIdx, 3);
                     chunk.Emit(Op.Pop);
                     break;
-
-                // FunctionCallNode as a statement (e.g. print("hi");)
+                
                 case FunctionCallNode call:
-                    CompileExpression(call); // pushes return value
-                    chunk.Emit(Op.Pop);      // discard it
+                    CompileExpression(call); 
+                    chunk.Emit(Op.Pop);
                     break;
 
                 default:
                     throw new Exception($"Compiler: unhandled statement node {node.GetType().Name}");
             }
         }
-
-        // ------------------------------------------------------------------
-        //  Expressions (leave exactly one value on stack)
-        // ------------------------------------------------------------------
-
+        
         private void CompileExpression(AstNode node) {
             switch (node) {
                 case NumberNode n:
@@ -150,7 +139,6 @@ namespace Weft.Language.Compilation {
                     break;
 
                 case ArrayLiteralNode arr:
-                    // push element count, then each element, then call __array_new
                     foreach (var elem in arr.Elements)
                         CompileExpression(elem);
                     var arrIdx = chunk.AddConstant("__array_new");
@@ -175,11 +163,7 @@ namespace Weft.Language.Compilation {
                     throw new Exception($"Compiler: unhandled expression node {node.GetType().Name}");
             }
         }
-
-        // ------------------------------------------------------------------
-        //  Binary operators
-        // ------------------------------------------------------------------
-
+        
         private void CompileBinary(BinaryOperationNode bin) {
             // Short-circuit: && and ||
             if (bin.Operator == "&&") {
@@ -222,37 +206,25 @@ namespace Weft.Language.Compilation {
                 default: throw new Exception($"Unknown binary operator '{bin.Operator}'");
             }
         }
-
-        // ------------------------------------------------------------------
-        //  Increment / Decrement (++i, i++, --i, i--)
-        // ------------------------------------------------------------------
-
+        
         private void CompileIncDec(IncDecNode inc) {
             var slot = ResolveLocal(inc.Name);
 
             if (inc.IsPrefix) {
-                // ++i: load, add 1, store, result is new value (left on stack)
                 chunk.Emit(Op.LoadLocal, slot);
                 chunk.Emit(Op.Const, chunk.AddConstant(1.0));
                 chunk.Emit(inc.IsIncrement ? Op.Add : Op.Sub);
                 chunk.Emit(Op.StoreLocal, slot);
-                // StoreLocal peeks, so the new value is still on top — that's our result
             }
             else {
-                // i++: load old value (our result), then load again, add 1, store back
-                chunk.Emit(Op.LoadLocal, slot);           // push old value (this is the expression result)
-                chunk.Emit(Op.LoadLocal, slot);           // push again for computation
+                chunk.Emit(Op.LoadLocal, slot);
+                chunk.Emit(Op.LoadLocal, slot);
                 chunk.Emit(Op.Const, chunk.AddConstant(1.0));
                 chunk.Emit(inc.IsIncrement ? Op.Add : Op.Sub);
-                chunk.Emit(Op.StoreLocal, slot);          // store new value
-                chunk.Emit(Op.Pop);                        // pop the peeked new value from StoreLocal
-                // old value is now on top as the expression result
+                chunk.Emit(Op.StoreLocal, slot);
+                chunk.Emit(Op.Pop);
             }
         }
-
-        // ------------------------------------------------------------------
-        //  Function calls
-        // ------------------------------------------------------------------
 
         private void CompileCall(FunctionCallNode call) {
             foreach (var arg in call.Arguments)
@@ -261,11 +233,7 @@ namespace Weft.Language.Compilation {
             var nameIdx = chunk.AddConstant(call.FunctionName);
             chunk.Emit(Op.Call, nameIdx, call.Arguments.Count);
         }
-
-        // ------------------------------------------------------------------
-        //  Control flow
-        // ------------------------------------------------------------------
-
+        
         private void CompileIf(IfNode ifn) {
             CompileExpression(ifn.Condition);
             var jumpToElse = EmitJump(Op.JumpIfFalse);
@@ -282,7 +250,7 @@ namespace Weft.Language.Compilation {
                 if (ifn.FalseBranch is BlockNode fb)
                     CompileBlock(fb);
                 else
-                    CompileStatement(ifn.FalseBranch); // handles else-if chains
+                    CompileStatement(ifn.FalseBranch);
                 
                 PatchJump(jumpOverElse);
             }
@@ -306,22 +274,19 @@ namespace Weft.Language.Compilation {
         }
 
         private void CompileFor(ForNode f) {
-            // for has its own scope for the init variable
             BeginScope();
 
             CompileStatement(f.Init);
 
             var loopStart = chunk.code.Count;
-            // continue target is right before the step, but we don't know that yet
-            // so we'll set it after compiling the body
-            var ctx = PushLoop(loopStart); // temporary, we'll fix continue target
+
+            var ctx = PushLoop(loopStart);
 
             CompileExpression(f.Condition);
             var exitJump = EmitJump(Op.JumpIfFalse);
 
             CompileBlock(f.Body);
 
-            // This is where 'continue' should jump to (right before step)
             var stepStart = chunk.code.Count;
             ctx.continueTarget = stepStart;
 
@@ -340,12 +305,11 @@ namespace Weft.Language.Compilation {
 
             CompileBlock(dw.Body);
 
-            // continue jumps to the condition check
             ctx.continueTarget = chunk.code.Count;
 
             CompileExpression(dw.Condition);
             var jumpBack = EmitJump(Op.JumpIfTrue);
-            PatchJump(jumpBack, loopStart); // if true, go back to loopStart
+            PatchJump(jumpBack, loopStart);
 
             PopLoop(ctx);
         }
@@ -355,8 +319,6 @@ namespace Weft.Language.Compilation {
                 throw new Exception("'break' outside of loop");
 
             var ctx = loopStack.Peek();
-            // Emit pops for any locals declared inside the loop body
-            // (we'll need to clean up the stack)
             var breakJump = EmitJump(Op.Jump);
             ctx.breakJumps.Add(breakJump);
         }
@@ -368,11 +330,7 @@ namespace Weft.Language.Compilation {
             var ctx = loopStack.Peek();
             chunk.Emit(Op.Jump, ctx.continueTarget);
         }
-
-        // ------------------------------------------------------------------
-        //  Blocks and scoping
-        // ------------------------------------------------------------------
-
+        
         private void CompileBlock(BlockNode block) {
             BeginScope();
             foreach (var stmt in block.Statements)
@@ -387,21 +345,14 @@ namespace Weft.Language.Compilation {
         private void EndScope() {
             scopeDepth--;
 
-            // Pop locals that belonged to the scope we're leaving
             while (locals.Count > 0 && locals[^1].depth > scopeDepth) {
                 chunk.Emit(Op.Pop);
                 locals.RemoveAt(locals.Count - 1);
             }
         }
-
-        // ------------------------------------------------------------------
-        //  Local variable tracking
-        // ------------------------------------------------------------------
-
+        
         private void AddLocal(string name) {
             locals.Add(new Local { name = name, depth = scopeDepth });
-            // The value is already on top of the stack from compiling the initializer.
-            // Its stack position = locals.Count - 1 (the slot we just added).
         }
 
         private int ResolveLocal(string name) {
@@ -412,13 +363,9 @@ namespace Weft.Language.Compilation {
             throw new Exception($"Undefined variable: '{name}'");
         }
 
-        // ------------------------------------------------------------------
-        //  Jump helpers
-        // ------------------------------------------------------------------
-
         private int EmitJump(Op op) {
-            chunk.Emit(op, 0xFFFF); // placeholder operand
-            return chunk.code.Count - 1; // index of the operand to patch
+            chunk.Emit(op, 0xFFFF);
+            return chunk.code.Count - 1;
         }
 
         private void PatchJump(int operandIndex) {
@@ -428,10 +375,6 @@ namespace Weft.Language.Compilation {
         private void PatchJump(int operandIndex, int target) {
             chunk.code[operandIndex] = target;
         }
-
-        // ------------------------------------------------------------------
-        //  Loop context helpers
-        // ------------------------------------------------------------------
 
         private LoopContext PushLoop(int continueTarget) {
             var ctx = new LoopContext {
@@ -443,7 +386,6 @@ namespace Weft.Language.Compilation {
         }
 
         private void PopLoop(LoopContext ctx) {
-            // Patch all break jumps to point here (after the loop)
             foreach (var jumpIdx in ctx.breakJumps)
                 PatchJump(jumpIdx);
 

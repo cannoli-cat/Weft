@@ -53,6 +53,22 @@ namespace Weft.Language.Parsing {
             }
 
             switch (token.Type) {
+                case TokenType.Keyword when token.Value == "func":
+                    Require(LanguageFeatures.Functions, "Functions not enabled", result);
+                    return result.HasError? null : ParseFuncDecl(result);
+                
+                case TokenType.Keyword when token.Value == "return":
+                    Advance();
+                    AstNode retVal = null;
+
+                    if (!Check(TokenType.Symbol) || Peek().Value != ";")
+                        retVal = ParseExpression(result);
+                    
+                    if (result.HasError) return null;
+                    Consume(TokenType.Symbol, ";", result, "Expected ';' after return value");
+                    
+                    return result.HasError ? null : new ReturnNode(retVal);
+                
                 case TokenType.Keyword when token.Value == "var":
                     return ParseVarDeclaration(result);
 
@@ -184,6 +200,30 @@ namespace Weft.Language.Parsing {
 
             result.Error = $"Unexpected identifier: {name}";
             return null;
+        }
+        
+        private AstNode ParseFuncDecl(ParseResult result) {
+            Advance(); // skip 'func'
+            var nameToken = Consume(TokenType.Identifier, result, "Expected function name");
+            if (result.HasError) return null;
+
+            Consume(TokenType.Symbol, "(", result, "Expected '(' after function name");
+            if (result.HasError) return null;
+
+            var parameters = new List<string>();
+            if (!Match(TokenType.Symbol, ")")) {
+                do {
+                    var paramTok = Consume(TokenType.Identifier, result, "Expected parameter name");
+                    if (result.HasError) return null;
+                    parameters.Add(paramTok.Value);
+                } while (Match(TokenType.Symbol, ","));
+
+                Consume(TokenType.Symbol, ")", result, "Expected ')' after parameters");
+                if (result.HasError) return null;
+            }
+
+            var body = ParseBlockOrStatement(result);
+            return result.HasError ? null : new FuncDeclNode(nameToken.Value, parameters, body);
         }
         
         private AstNode ParseVarDeclaration(ParseResult result) {
