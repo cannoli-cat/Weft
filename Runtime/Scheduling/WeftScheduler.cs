@@ -40,7 +40,7 @@ namespace Weft.Runtime.Scheduling {
             try {
                 if (p.Context?.Services is WeftServiceProvider sp &&
                     sp.TryGet<WeftConsoleService>(out var console)) {
-                    console.Report($"ERR: {error}", true);
+                    console.Report(error, true);
                 } else {
                     UnityEngine.Debug.LogError($"[weft pid:{p.Pid}] {error}");
                 }

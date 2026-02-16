@@ -290,7 +290,7 @@ namespace Weft.Demos {
 
             var (pid, error) = WeftEngine.TryRun(script, ctx);
             if (error != null) {
-                PrintToConsole($"ERR: {error}", true); 
+                PrintToConsole(error, true); 
                 return;
             }
             

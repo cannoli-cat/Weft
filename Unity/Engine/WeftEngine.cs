@@ -161,7 +161,7 @@ namespace Weft.Unity.Engine {
 
             var parse = new Parser(Options.Features).Parse(lex.Tokens);
             if (parse.HasError)
-                return (null, parse.Error);
+                return (null, $"[Line: {parse.ErrorLine}] {parse.Error}");
 
             WeftChunk chunk;
             try {

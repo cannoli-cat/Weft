@@ -6,7 +6,7 @@ namespace Weft.Language.Compilation {
     public class WeftCompiler {
         private WeftChunk chunk;
         private readonly List<Local> locals = new();
-        private int scopeDepth;
+        private int scopeDepth, currentLine;
         
         private readonly Stack<LoopContext> loopStack = new();
         private readonly Dictionary<string, (int pc, int arity)> funcMetaData = new();
@@ -30,11 +30,13 @@ namespace Weft.Language.Compilation {
             foreach (var node in program)
                 CompileStatement(node);
 
-            chunk.Emit(Op.Halt);
+            Emit(Op.Halt);
             return chunk;
         }
         
         private void CompileStatement(AstNode node) {
+            currentLine = node.Line;
+            
             switch (node) {
                 case FuncDeclNode fd:
                     CompileFuncDecl(fd);
@@ -42,8 +44,9 @@ namespace Weft.Language.Compilation {
                 
                 case ReturnNode ret:
                     if (ret.Value != null) CompileExpression(ret.Value);
-                    else chunk.Emit(Op.Const, chunk.AddConstant(null));
-                    chunk.Emit(Op.Return);
+                    else Emit(Op.Const, chunk.AddConstant(null));
+                    
+                    Emit(Op.Return);
                     break;
                 
                 case VarNode v:
@@ -54,13 +57,14 @@ namespace Weft.Language.Compilation {
                 case AssignmentNode a:
                     CompileExpression(a.Value);
                     var assignSlot = ResolveLocal(a.Name);
-                    chunk.Emit(Op.StoreLocal, assignSlot);
-                    chunk.Emit(Op.Pop);
+                    
+                    Emit(Op.StoreLocal, assignSlot);
+                    Emit(Op.Pop);
                     break;
 
                 case ExprStmtNode es:
                     CompileExpression(es.Expr);
-                    chunk.Emit(Op.Pop);
+                    Emit(Op.Pop);
                     break;
 
                 case IfNode ifn:
@@ -96,13 +100,13 @@ namespace Weft.Language.Compilation {
                     CompileExpression(idx.Index);
                     CompileExpression(idx.Value);
                     var setIdx = chunk.AddConstant("__index_set");
-                    chunk.Emit(Op.Call, setIdx, 3);
-                    chunk.Emit(Op.Pop);
+                    Emit(Op.Call, setIdx, 3);
+                    Emit(Op.Pop);
                     break;
                 
                 case FunctionCallNode call:
                     CompileExpression(call); 
-                    chunk.Emit(Op.Pop);
+                    Emit(Op.Pop);
                     break;
 
                 default:
@@ -111,28 +115,30 @@ namespace Weft.Language.Compilation {
         }
         
         private void CompileExpression(AstNode node) {
+            currentLine = node.Line;
+            
             switch (node) {
                 case NumberNode n:
-                    chunk.Emit(Op.Const, chunk.AddConstant(n.Value));
+                    Emit(Op.Const, chunk.AddConstant(n.Value));
                     break;
 
                 case StringNode s:
-                    chunk.Emit(Op.Const, chunk.AddConstant(s.Value));
+                    Emit(Op.Const, chunk.AddConstant(s.Value));
                     break;
 
                 case BoolNode b:
-                    chunk.Emit(Op.Const, chunk.AddConstant(b.Value));
+                    Emit(Op.Const, chunk.AddConstant(b.Value));
                     break;
 
                 case IdentifierNode id:
-                    chunk.Emit(Op.LoadLocal, ResolveLocal(id.Name));
+                    Emit(Op.LoadLocal, ResolveLocal(id.Name));
                     break;
 
                 case UnaryNode u:
                     CompileExpression(u.Operand);
                     switch (u.Operator) {
-                        case "-": chunk.Emit(Op.Negate); break;
-                        case "!": chunk.Emit(Op.Not); break;
+                        case "-": Emit(Op.Negate); break;
+                        case "!": Emit(Op.Not); break;
                         default: throw new Exception($"Unknown unary operator '{u.Operator}'");
                     }
                     break;
@@ -153,21 +159,21 @@ namespace Weft.Language.Compilation {
                     foreach (var elem in arr.Elements)
                         CompileExpression(elem);
                     var arrIdx = chunk.AddConstant("__array_new");
-                    chunk.Emit(Op.Call, arrIdx, arr.Elements.Count);
+                    Emit(Op.Call, arrIdx, arr.Elements.Count);
                     break;
 
                 case IndexAccessNode idx:
                     CompileExpression(idx.Target);
                     CompileExpression(idx.Index);
                     var getIdx = chunk.AddConstant("__index_get");
-                    chunk.Emit(Op.Call, getIdx, 2);
+                    Emit(Op.Call, getIdx, 2);
                     break;
 
                 case MemberAccessNode mem:
                     CompileExpression(mem.Target);
-                    chunk.Emit(Op.Const, chunk.AddConstant(mem.Member));
+                    Emit(Op.Const, chunk.AddConstant(mem.Member));
                     var memIdx = chunk.AddConstant("__member_get");
-                    chunk.Emit(Op.Call, memIdx, 2);
+                    Emit(Op.Call, memIdx, 2);
                     break;
 
                 default:
@@ -182,7 +188,7 @@ namespace Weft.Language.Compilation {
                 CompileExpression(bin.Right);
                 var jumpToEnd = EmitJump(Op.Jump);
                 PatchJump(jumpToFalse);
-                chunk.Emit(Op.Const, chunk.AddConstant(false));
+                Emit(Op.Const, chunk.AddConstant(false));
                 PatchJump(jumpToEnd);
                 return;
             }
@@ -193,7 +199,7 @@ namespace Weft.Language.Compilation {
                 CompileExpression(bin.Right);
                 var jumpToEnd = EmitJump(Op.Jump);
                 PatchJump(jumpToTrue);
-                chunk.Emit(Op.Const, chunk.AddConstant(true));
+                Emit(Op.Const, chunk.AddConstant(true));
                 PatchJump(jumpToEnd);
                 return;
             }
@@ -202,17 +208,17 @@ namespace Weft.Language.Compilation {
             CompileExpression(bin.Right);
 
             switch (bin.Operator) {
-                case "+":  chunk.Emit(Op.Add); break;
-                case "-":  chunk.Emit(Op.Sub); break;
-                case "*":  chunk.Emit(Op.Mul); break;
-                case "/":  chunk.Emit(Op.Div); break;
-                case "%":  chunk.Emit(Op.Mod); break;
-                case "==": chunk.Emit(Op.Eq); break;
-                case "!=": chunk.Emit(Op.Neq); break;
-                case "<":  chunk.Emit(Op.Lt); break;
-                case ">":  chunk.Emit(Op.Gt); break;
-                case "<=": chunk.Emit(Op.Lte); break;
-                case ">=": chunk.Emit(Op.Gte); break;
+                case "+":  Emit(Op.Add); break;
+                case "-":  Emit(Op.Sub); break;
+                case "*":  Emit(Op.Mul); break;
+                case "/":  Emit(Op.Div); break;
+                case "%":  Emit(Op.Mod); break;
+                case "==": Emit(Op.Eq); break;
+                case "!=": Emit(Op.Neq); break;
+                case "<":  Emit(Op.Lt); break;
+                case ">":  Emit(Op.Gt); break;
+                case "<=": Emit(Op.Lte); break;
+                case ">=": Emit(Op.Gte); break;
                 default: throw new Exception($"Unknown binary operator '{bin.Operator}'");
             }
         }
@@ -221,18 +227,18 @@ namespace Weft.Language.Compilation {
             var slot = ResolveLocal(inc.Name);
 
             if (inc.IsPrefix) {
-                chunk.Emit(Op.LoadLocal, slot);
-                chunk.Emit(Op.Const, chunk.AddConstant(1.0));
-                chunk.Emit(inc.IsIncrement ? Op.Add : Op.Sub);
-                chunk.Emit(Op.StoreLocal, slot);
+                Emit(Op.LoadLocal, slot);
+                Emit(Op.Const, chunk.AddConstant(1.0));
+                Emit(inc.IsIncrement ? Op.Add : Op.Sub);
+                Emit(Op.StoreLocal, slot);
             }
             else {
-                chunk.Emit(Op.LoadLocal, slot);
-                chunk.Emit(Op.LoadLocal, slot);
-                chunk.Emit(Op.Const, chunk.AddConstant(1.0));
-                chunk.Emit(inc.IsIncrement ? Op.Add : Op.Sub);
-                chunk.Emit(Op.StoreLocal, slot);
-                chunk.Emit(Op.Pop);
+                Emit(Op.LoadLocal, slot);
+                Emit(Op.LoadLocal, slot);
+                Emit(Op.Const, chunk.AddConstant(1.0));
+                Emit(inc.IsIncrement ? Op.Add : Op.Sub);
+                Emit(Op.StoreLocal, slot);
+                Emit(Op.Pop);
             }
         }
 
@@ -241,11 +247,11 @@ namespace Weft.Language.Compilation {
                 CompileExpression(arg);
 
             if (funcMetaData.TryGetValue(call.FunctionName, out var meta)) {
-                chunk.Emit(Op.CallFunc, meta.pc, meta.arity);
+                Emit(Op.CallFunc, meta.pc, meta.arity);
             } 
             else {
                 var nameIdx = chunk.AddConstant(call.FunctionName);
-                chunk.Emit(Op.Call, nameIdx, call.Arguments.Count);
+                Emit(Op.Call, nameIdx, call.Arguments.Count);
             }
         }
         
@@ -282,7 +288,7 @@ namespace Weft.Language.Compilation {
             var exitJump = EmitJump(Op.JumpIfFalse);
 
             CompileBlock(w.Body);
-            chunk.Emit(Op.Jump, loopStart);
+            Emit(Op.Jump, loopStart);
             PatchJump(exitJump);
 
             PopLoop(ctx);
@@ -307,7 +313,7 @@ namespace Weft.Language.Compilation {
 
             CompileStatement(f.Step);
 
-            chunk.Emit(Op.Jump, loopStart);
+            Emit(Op.Jump, loopStart);
             PatchJump(exitJump);
 
             PopLoop(ctx);
@@ -346,8 +352,8 @@ namespace Weft.Language.Compilation {
             foreach (var stmt in fd.Body.Statements)
                 CompileStatement(stmt);
             
-            chunk.Emit(Op.Const, chunk.AddConstant(null));
-            chunk.Emit(Op.Return);
+            Emit(Op.Const, chunk.AddConstant(null));
+            Emit(Op.Return);
             
             locals.Clear();
             locals.AddRange(outerLocals);
@@ -370,7 +376,7 @@ namespace Weft.Language.Compilation {
                 throw new Exception("'continue' outside of loop");
 
             var ctx = loopStack.Peek();
-            chunk.Emit(Op.Jump, ctx.continueTarget);
+            Emit(Op.Jump, ctx.continueTarget);
         }
         
         private void CompileBlock(BlockNode block) {
@@ -388,7 +394,7 @@ namespace Weft.Language.Compilation {
             scopeDepth--;
 
             while (locals.Count > 0 && locals[^1].depth > scopeDepth) {
-                chunk.Emit(Op.Pop);
+                Emit(Op.Pop);
                 locals.RemoveAt(locals.Count - 1);
             }
         }
@@ -406,7 +412,7 @@ namespace Weft.Language.Compilation {
         }
 
         private int EmitJump(Op op) {
-            chunk.Emit(op, 0xFFFF);
+            Emit(op, 0xFFFF);
             return chunk.code.Count - 1;
         }
 
@@ -433,5 +439,9 @@ namespace Weft.Language.Compilation {
 
             loopStack.Pop();
         }
+        
+        private void Emit(Op op) => chunk.Emit(op, currentLine);
+        private void Emit(Op op, int operand) => chunk.Emit(op, operand, currentLine);
+        private void Emit(Op op, int a, int b) => chunk.Emit(op, a, b, currentLine);
     }
 }

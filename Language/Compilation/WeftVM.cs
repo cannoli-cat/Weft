@@ -47,8 +47,9 @@ namespace Weft.Language.Compilation {
 
             while (pc < code.Count) {
                 if (--gas <= 0)
-                    return ExecutionResult.ErrorResult("Gas limit exceeded.");
+                    return ExecutionResult.ErrorResult($"[Line: {chunk.lines[pc]}] Gas limit exceeded.");
 
+                var instrPc = pc; 
                 var op = (Op)code[pc++];
 
                 switch (op) {
@@ -114,7 +115,7 @@ namespace Weft.Language.Compilation {
                     case Op.Div: {
                         var b = (double)stack[--sp];
                         var a = (double)stack[--sp];
-                        if (b == 0) return ExecutionResult.ErrorResult("Division by zero.");
+                        if (b == 0) return ExecutionResult.ErrorResult($"[Line: {chunk.lines[instrPc]}] Division by zero.");
                         stack[sp++] = a / b;
                         break;
                     }
@@ -198,7 +199,7 @@ namespace Weft.Language.Compilation {
                             args[i] = stack[--sp];
 
                         if (!WeftRegistry.TryGet(funcName, out var hostFunc))
-                            return ExecutionResult.ErrorResult($"Unknown function: {funcName}");
+                            return ExecutionResult.ErrorResult($"[Line: {chunk.lines[instrPc]}] Unknown function: {funcName}");
 
                         try {
                             var ret = hostFunc(context, args);
@@ -220,7 +221,7 @@ namespace Weft.Language.Compilation {
                             stack[sp++] = ret;
                         }
                         catch (Exception ex) {
-                            return ExecutionResult.ErrorResult($"Function '{funcName}' failed: {ex.Message}");
+                            return ExecutionResult.ErrorResult($"[Line: {chunk.lines[instrPc]}] Function '{funcName}' failed: {ex.Message}");
                         }
                         break;
                     }
@@ -230,7 +231,7 @@ namespace Weft.Language.Compilation {
                         return ExecutionResult.SuccessResult();
 
                     default:
-                        return ExecutionResult.ErrorResult($"Unknown opcode: {op}");
+                        return ExecutionResult.ErrorResult($"[Line: {chunk.lines[instrPc]}] Unknown opcode: {op}");
                 }
             }
             

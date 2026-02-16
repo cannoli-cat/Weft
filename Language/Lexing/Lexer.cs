@@ -18,12 +18,14 @@ namespace Weft.Language.Lexing {
             };
 
             var i = 0; // current position in input
+            var line = 1; // current line number for error reporting
     
             while (i < input.Length) {
                 var c = input[i];
 
                 // skip whitespace
                 if (char.IsWhiteSpace(c)) {
+                    if (c == '\n') line++;
                     i++;
                     continue;
                 }
@@ -38,8 +40,8 @@ namespace Weft.Language.Lexing {
 
                     // determines if the word is a keyword or identifier
                     result.Tokens.Add(IsKeyword(word)
-                        ? new Token(TokenType.Keyword, word)
-                        : new Token(TokenType.Identifier, word));
+                        ? new Token(TokenType.Keyword, word, line)
+                        : new Token(TokenType.Identifier, word, line));
 
                     continue;
                 }
@@ -56,7 +58,7 @@ namespace Weft.Language.Lexing {
 
                     var numStr = input.Substring(start, i - start);
 
-                    result.Tokens.Add(new Token(TokenType.Number, numStr));
+                    result.Tokens.Add(new Token(TokenType.Number, numStr, line));
                     continue;
                 }
 
@@ -67,6 +69,8 @@ namespace Weft.Language.Lexing {
                     var sb = new System.Text.StringBuilder();
 
                     while (i < input.Length && input[i] != '"') {
+                        if (input[i] == '\n') line++;
+                        
                         if (input[i] == '\\' && i + 1 < input.Length) {
                             var esc = input[i + 1];
                             switch (esc) {
@@ -76,6 +80,7 @@ namespace Weft.Language.Lexing {
                                 case 't':  sb.Append('\t'); i += 2; continue;
                             }
                         }
+                        
                         sb.Append(input[i]);
                         i++;
                     }
@@ -83,7 +88,7 @@ namespace Weft.Language.Lexing {
                     if (i < input.Length) {
                         i++; // skip closing quote
                         var raw = input.Substring(rawStart, i - rawStart);
-                        result.Tokens.Add(new Token(TokenType.String, sb.ToString(), raw));
+                        result.Tokens.Add(new Token(TokenType.String, sb.ToString(), line, raw));
                     }
                     else
                         result.Error = "Unterminated string literal";
@@ -102,7 +107,7 @@ namespace Weft.Language.Lexing {
 
                         if (includeComments) {
                             var text = input.Substring(start, i - start);
-                            result.Tokens.Add(new Token(TokenType.Comment, text));
+                            result.Tokens.Add(new Token(TokenType.Comment, text, line));
                         }
                         
                         continue;
@@ -120,6 +125,8 @@ namespace Weft.Language.Lexing {
                                 break;
                             }
 
+                            if (input[i] == '\n') line++;
+                            
                             i++;
                         }
 
@@ -130,7 +137,7 @@ namespace Weft.Language.Lexing {
 
                         if (includeComments) {
                             var text = input.Substring(start, i - start);
-                            result.Tokens.Add(new Token(TokenType.Comment, text));
+                            result.Tokens.Add(new Token(TokenType.Comment, text, line));
                         }
 
                         continue;
@@ -163,14 +170,14 @@ namespace Weft.Language.Lexing {
                         }
                     }
                     
-                    result.Tokens.Add(new Token(TokenType.Operator, op));
+                    result.Tokens.Add(new Token(TokenType.Operator, op, line));
                     i++;
                     continue;
                 }
 
                 // handle symbols
                 if ("(){}[];:,.".Contains(c)) {
-                    result.Tokens.Add(new Token(TokenType.Symbol, c.ToString()));
+                    result.Tokens.Add(new Token(TokenType.Symbol, c.ToString(), line));
                     i++;
                     continue;
                 }

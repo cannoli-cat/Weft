@@ -3,6 +3,7 @@ using Weft.Language.AST;
 
 namespace Weft.Language.Parsing {
     public class ParseResult {
+        public int ErrorLine { get; set; }
         public List<AstNode> Nodes { get; set; } = new();
         public string Error { get; set; } = null;
         public bool HasError => !string.IsNullOrEmpty(Error);
