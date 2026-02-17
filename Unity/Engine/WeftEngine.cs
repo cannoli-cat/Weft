@@ -105,11 +105,11 @@ namespace Weft.Unity.Engine {
                 module.Register(registrar);
 
             foreach (var binding in FindObjectsByType<WeftBindings>(FindObjectsSortMode.None))
-                binding.Register(registrar);
+                binding.RegisterAttributes(registrar);
 
             ClearScriptCache();
 
-            Debug.Log($"[Weft] Bound: {string.Join(", ", WeftRegistry.Names())}");
+            Debug.Log($"[Weft] Bound:\n{string.Join(",\n", WeftRegistry.Names())}");
         }
 
         public void SetOptions(WeftOptions options) {

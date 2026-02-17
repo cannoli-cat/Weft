@@ -5,6 +5,9 @@ namespace Weft.Language.Compilation {
         
         LoadLocal,
         StoreLocal,
+        
+        LoadGlobal,
+        StoreGlobal,
 
         Add, Sub, Mul, Div, Mod,
         Negate,

@@ -1,11 +1,10 @@
 using Weft.Runtime;
 using Weft.Runtime.Binding;
 using Weft.Runtime.Modules;
-using Weft.Runtime.Services;
 using Weft.Unity.Engine;
 using Weft.Unity.Services;
 
-namespace Weft.Demos {
+namespace Weft.Demos.ScriptsDemo.Scripts {
     public sealed class DemoInventoryModule : IWeftModule {
         public string Id => "demo-inventory";
         public LanguageFeatures ParserFeatures => LanguageFeatures.None;

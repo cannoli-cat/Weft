@@ -14,6 +14,8 @@ namespace Weft.Language.Compilation {
         private ScriptContext context;
         private CallFrame[] frames = new CallFrame[64];
         private int frameCount;
+        
+        private readonly object[] globals = new object[256];
 
         public bool Completed { get; private set; }
 
@@ -176,7 +178,8 @@ namespace Weft.Language.Compilation {
                     case Op.JumpIfFalse: {
                         var target = code[pc++];
                         var val = stack[--sp];
-                        if (val is bool bv && !bv)
+                        
+                        if (!IsTruthy(val))
                             pc = target;
                         break;
                     }
@@ -184,7 +187,8 @@ namespace Weft.Language.Compilation {
                     case Op.JumpIfTrue: {
                         var target = code[pc++];
                         var val = stack[--sp];
-                        if (val is bool bv && bv)
+                        
+                        if (IsTruthy(val))
                             pc = target;
                         break;
                     }
@@ -229,6 +233,14 @@ namespace Weft.Language.Compilation {
                     case Op.Halt:
                         Completed = true;
                         return ExecutionResult.SuccessResult();
+                    
+                    case Op.LoadGlobal:
+                        stack[sp++] = globals[code[pc++]];
+                        break;
+                    
+                    case Op.StoreGlobal:
+                        globals[code[pc++]] = stack[sp - 1];
+                        break;
 
                     default:
                         return ExecutionResult.ErrorResult($"[Line: {chunk.lines[instrPc]}] Unknown opcode: {op}");
@@ -237,6 +249,14 @@ namespace Weft.Language.Compilation {
             
             Completed = true;
             return ExecutionResult.SuccessResult();
+        }
+        
+        private static bool IsTruthy(object val) {
+            if (val == null) return false;
+            if (val is bool b) return b;
+            if (val is double d) return d != 0;
+            
+            return true; 
         }
 
         private new static bool Equals(object a, object b) {

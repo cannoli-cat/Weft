@@ -35,7 +35,7 @@ namespace Weft.Language.Parsing {
 
             return result;
         }
-        
+
         private AstNode ParseStatement(ParseResult result) {
             var token = Peek();
             if (IsAtEnd() || token == null) {
@@ -46,31 +46,32 @@ namespace Weft.Language.Parsing {
             // prefix ++ / --
             if (Match(TokenType.Operator, "++") || Match(TokenType.Operator, "--")) {
                 var op = Previous().Value;
-                
+
                 var idTok = Consume(TokenType.Identifier, result, $"Expected identifier after '{op}'");
                 if (result.HasError) return null;
-                
+
                 Consume(TokenType.Symbol, ";", result, "Expected ';' after increment/decrement");
-                return new ExprStmtNode(new IncDecNode(idTok.Value, isIncrement: op == "++", isPrefix: true) { Line = token.Line });
+                return new ExprStmtNode(new IncDecNode(idTok.Value, isIncrement: op == "++", isPrefix: true)
+                    { Line = token.Line });
             }
 
             switch (token.Type) {
                 case TokenType.Keyword when token.Value == "func":
                     Require(LanguageFeatures.Functions, "Functions not enabled", result);
-                    return result.HasError? null : ParseFuncDecl(result);
-                
+                    return result.HasError ? null : ParseFuncDecl(result);
+
                 case TokenType.Keyword when token.Value == "return":
                     Advance();
                     AstNode retVal = null;
 
                     if (!Check(TokenType.Symbol) || Peek().Value != ";")
                         retVal = ParseExpression(result);
-                    
+
                     if (result.HasError) return null;
                     Consume(TokenType.Symbol, ";", result, "Expected ';' after return value");
-                    
+
                     return result.HasError ? null : new ReturnNode(retVal) { Line = token.Line };
-                
+
                 case TokenType.Keyword when token.Value == "var":
                     return ParseVarDeclaration(result);
 
@@ -93,19 +94,19 @@ namespace Weft.Language.Parsing {
                 case TokenType.Keyword when token.Value == "break":
                     Require(LanguageFeatures.Loops, "Loops not enabled", result);
                     if (result.HasError) return null;
-                    
+
                     Advance();
                     Consume(TokenType.Symbol, ";", result, "Expected ';' after 'break'");
-                    
+
                     return result.HasError ? null : new BreakNode() { Line = token.Line };
 
                 case TokenType.Keyword when token.Value == "continue":
                     Require(LanguageFeatures.Loops, "Loops not enabled", result);
                     if (result.HasError) return null;
-                    
+
                     Advance();
                     Consume(TokenType.Symbol, ";", result, "Expected ';' after 'continue'");
-                    
+
                     return result.HasError ? null : new ContinueNode() { Line = token.Line };
 
                 case TokenType.Identifier:
@@ -116,12 +117,7 @@ namespace Weft.Language.Parsing {
                     return null;
             }
         }
-
-        /// <summary>
-        /// Handles assignment, augmented assignment, postfix inc/dec, and
-        /// bare function calls when the current token is an identifier.
-        /// Pulled into its own method to keep ParseStatement readable.
-        /// </summary>
+        
         private AstNode ParseIdentifierStatement(ParseResult result) {
             Advance();
             var name = Previous().Value;
@@ -129,19 +125,19 @@ namespace Weft.Language.Parsing {
             if (Match(TokenType.Symbol, "[")) {
                 Require(LanguageFeatures.Collections, "Collections not enabled", result);
                 if (result.HasError) return null;
-                
+
                 var index = ParseExpression(result);
                 if (result.HasError) return null;
-                
+
                 Consume(TokenType.Symbol, "]", result, "Expected ']'");
                 if (result.HasError) return null;
-                
+
                 Consume(TokenType.Operator, "=", result, "Expected '=' after index");
                 if (result.HasError) return null;
-                
+
                 var value = ParseExpression(result);
                 if (result.HasError) return null;
-                
+
                 Consume(TokenType.Symbol, ";", result, "Expected ';'");
                 return new IndexAssignNode(new IdentifierNode(name), index, value) { Line = Previous().Line };
             }
@@ -149,33 +145,38 @@ namespace Weft.Language.Parsing {
             if (Match(TokenType.Symbol, ".")) {
                 Require(LanguageFeatures.Collections, "Collections not enabled", result);
                 if (result.HasError) return null;
-                
+
                 var member = Consume(TokenType.Identifier, result, "Expected member name after '.'");
                 if (result.HasError) return null;
 
                 if (Match(TokenType.Symbol, "(")) {
                     var args = new List<AstNode> { new IdentifierNode(name) };
-                    
+
                     if (!Match(TokenType.Symbol, ")")) {
-                        do { args.Add(ParseExpression(result)); } while (Match(TokenType.Symbol, ","));
+                        do {
+                            args.Add(ParseExpression(result));
+                        } while (Match(TokenType.Symbol, ","));
+
                         Consume(TokenType.Symbol, ")", result, "Expected ')'");
                     }
-                    
+
                     if (result.HasError) return null;
                     Consume(TokenType.Symbol, ";", result, "Expected ';' after method call");
-                    
+
                     return new FunctionCallNode($"__{member.Value}", args) { Line = Previous().Line };
                 }
 
                 Consume(TokenType.Symbol, ";", result, "Expected ';'");
-                return new ExprStmtNode(new MemberAccessNode(new IdentifierNode(name), member.Value)) { Line = Previous().Line };
+                return new ExprStmtNode(new MemberAccessNode(new IdentifierNode(name), member.Value))
+                    { Line = Previous().Line };
             }
 
             // postfix ++ / --
             if (Match(TokenType.Operator, "++") || Match(TokenType.Operator, "--")) {
                 var isInc = Previous().Value == "++";
                 Consume(TokenType.Symbol, ";", result, "Expected ';' after increment/decrement");
-                return new ExprStmtNode(new IncDecNode(name, isIncrement: isInc, isPrefix: false)) { Line = Previous().Line };
+                return new ExprStmtNode(new IncDecNode(name, isIncrement: isInc, isPrefix: false))
+                    { Line = Previous().Line };
             }
 
             // augmented assignment
@@ -189,7 +190,8 @@ namespace Weft.Language.Parsing {
                 var rhs = ParseExpression(result);
                 if (result.HasError) return null;
                 Consume(TokenType.Symbol, ";", result, "Expected ';' after assignment");
-                return new AssignmentNode(name, new BinaryOperationNode(new IdentifierNode(name), op, rhs)) { Line = Previous().Line };
+                return new AssignmentNode(name, new BinaryOperationNode(new IdentifierNode(name), op, rhs))
+                    { Line = Previous().Line };
             }
 
             // simple assignment
@@ -206,11 +208,11 @@ namespace Weft.Language.Parsing {
                 Consume(TokenType.Symbol, ";", result, "Expected ';' after function call");
                 return funcCall;
             }
-            
+
             SetError(result, $"Unexpected identifier: {name}");
             return null;
         }
-        
+
         private AstNode ParseFuncDecl(ParseResult result) {
             Advance(); // skip 'func'
             var nameToken = Consume(TokenType.Identifier, result, "Expected function name");
@@ -232,28 +234,30 @@ namespace Weft.Language.Parsing {
             }
 
             var body = ParseBlockOrStatement(result);
-            return result.HasError ? null : new FuncDeclNode(nameToken.Value, parameters, body) { Line = nameToken.Line };
+            return result.HasError
+                ? null
+                : new FuncDeclNode(nameToken.Value, parameters, body) { Line = nameToken.Line };
         }
-        
+
         private AstNode ParseVarDeclaration(ParseResult result) {
             Advance(); // skip 'var'
             var nameToken = Consume(TokenType.Identifier, result, "Expected variable name");
             if (result.HasError) return null;
-            
+
             Consume(TokenType.Operator, "=", result, "Expected '=' after variable name");
             if (result.HasError) return null;
-            
+
             var expr = ParseExpression(result);
             if (result.HasError) return null;
-            
+
             Consume(TokenType.Symbol, ";", result, "Expected ';' after variable declaration");
             return result.HasError ? null : new VarNode(nameToken.Value, expr) { Line = nameToken.Line };
         }
-        
+
         private AstNode ParseIfStatement(ParseResult res, bool alreadyConsumedIf = false) {
             var line = Peek().Line;
             if (!alreadyConsumedIf) Advance(); // 'if'
-            
+
             Consume(TokenType.Symbol, "(", res, "Expected '(' after 'if'");
             if (res.HasError) return null;
 
@@ -278,7 +282,7 @@ namespace Weft.Language.Parsing {
         private AstNode ParseWhile(ParseResult res) {
             var line = Peek().Line;
             Advance(); // 'while'
-            
+
             Consume(TokenType.Symbol, "(", res, "Expected '(' after 'while'");
             if (res.HasError) return null;
 
@@ -301,7 +305,7 @@ namespace Weft.Language.Parsing {
 
             Consume(TokenType.Keyword, "while", res, "Expected 'while' after do-block");
             if (res.HasError) return null;
-            
+
             Consume(TokenType.Symbol, "(", res, "Expected '(' after 'while'");
             if (res.HasError) return null;
 
@@ -310,7 +314,7 @@ namespace Weft.Language.Parsing {
 
             Consume(TokenType.Symbol, ")", res, "Expected ')' after do-while condition");
             if (res.HasError) return null;
-            
+
             Consume(TokenType.Symbol, ";", res, "Expected ';' after do-while");
             return res.HasError ? null : new DoWhileNode(body, cond) { Line = line };
         }
@@ -318,7 +322,7 @@ namespace Weft.Language.Parsing {
         private AstNode ParseFor(ParseResult res) {
             var line = Peek().Line;
             Advance(); // 'for'
-            
+
             Consume(TokenType.Symbol, "(", res, "Expected '(' after 'for'");
             if (res.HasError) return null;
 
@@ -329,7 +333,7 @@ namespace Weft.Language.Parsing {
             // condition
             var cond = ParseExpression(res);
             if (res.HasError) return null;
-            
+
             Consume(TokenType.Symbol, ";", res, "Expected ';' after for-condition");
             if (res.HasError) return null;
 
@@ -343,11 +347,7 @@ namespace Weft.Language.Parsing {
             var body = ParseBlockOrStatement(res);
             return res.HasError ? null : new ForNode(init, cond, step, body) { Line = line };
         }
-
-        /// <summary>
-        /// Parses the step clause of a for loop (e.g. i++, i += 1, i = i + 1).
-        /// Like ParseIdentifierStatement but without consuming a trailing ';'.
-        /// </summary>
+        
         private AstNode ParseForStep(ParseResult res) {
             // prefix ++ / --
             if (Match(TokenType.Operator, "++") || Match(TokenType.Operator, "--")) {
@@ -355,7 +355,8 @@ namespace Weft.Language.Parsing {
                 var idTok = Consume(TokenType.Identifier, res, $"Expected identifier after '{op}'");
                 return res.HasError
                     ? null
-                    : new ExprStmtNode(new IncDecNode(idTok.Value, isIncrement: op == "++", isPrefix: true)) { Line = idTok.Line };
+                    : new ExprStmtNode(new IncDecNode(idTok.Value, isIncrement: op == "++", isPrefix: true))
+                        { Line = idTok.Line };
             }
 
             var tok = Consume(TokenType.Identifier, res, "Expected identifier in for-step");
@@ -375,7 +376,8 @@ namespace Weft.Language.Parsing {
                 var op = Previous().Value[0].ToString();
                 var rhs = ParseExpression(res);
                 if (res.HasError) return null;
-                return new AssignmentNode(name, new BinaryOperationNode(new IdentifierNode(name), op, rhs)) { Line = tok.Line };
+                return new AssignmentNode(name, new BinaryOperationNode(new IdentifierNode(name), op, rhs))
+                    { Line = tok.Line };
             }
 
             // simple assignment
@@ -384,11 +386,11 @@ namespace Weft.Language.Parsing {
                 if (res.HasError) return null;
                 return new AssignmentNode(name, rhs) { Line = tok.Line };
             }
-            
+
             SetError(res, $"Unexpected for-step token after '{name}'");
             return null;
         }
-        
+
         private BlockNode ParseBlockOrStatement(ParseResult res) {
             if (Match(TokenType.Symbol, "{")) {
                 var stmts = ParseBlock(res);
@@ -398,7 +400,7 @@ namespace Weft.Language.Parsing {
 
             var stmt = ParseStatement(res);
             if (res.HasError || stmt == null) return null;
-            
+
             return new BlockNode(new List<AstNode> { stmt }) { Line = stmt.Line };
         }
 
@@ -419,7 +421,7 @@ namespace Weft.Language.Parsing {
 
             return nodes;
         }
-        
+
         private AstNode ParseExpression(ParseResult result) => ParseLogicalOr(result);
 
         private FunctionCallNode ParseFunctionCall(string functionName, ParseResult result) {
@@ -507,11 +509,13 @@ namespace Weft.Language.Parsing {
 
         private AstNode ParseUnary(ParseResult res) {
             var line = Peek()?.Line ?? 0;
-            
+
             if (Match(TokenType.Operator, "++") || Match(TokenType.Operator, "--")) {
                 var op = Previous().Value;
                 var idTok = Consume(TokenType.Identifier, res, $"Expected identifier after '{op}'");
-                return res.HasError ? null : new IncDecNode(idTok.Value, isIncrement: op == "++", isPrefix: true) { Line = idTok.Line };
+                return res.HasError
+                    ? null
+                    : new IncDecNode(idTok.Value, isIncrement: op == "++", isPrefix: true) { Line = idTok.Line };
             }
 
             if (Match(TokenType.Operator, "!")) {
@@ -553,7 +557,10 @@ namespace Weft.Language.Parsing {
                     if (Match(TokenType.Symbol, "(")) {
                         var args = new List<AstNode>();
                         if (!Match(TokenType.Symbol, ")")) {
-                            do { args.Add(ParseExpression(res)); } while (Match(TokenType.Symbol, ","));
+                            do {
+                                args.Add(ParseExpression(res));
+                            } while (Match(TokenType.Symbol, ","));
+
                             Consume(TokenType.Symbol, ")", res, "Expected ')'");
                         }
 
@@ -573,12 +580,14 @@ namespace Weft.Language.Parsing {
                 }
                 else break;
             }
+
             return node;
         }
 
         private AstNode ParsePrimary(ParseResult result) {
             if (Match(TokenType.Number))
-                return new NumberNode(double.Parse(Previous().Value, CultureInfo.InvariantCulture)) { Line = Previous().Line };
+                return new NumberNode(double.Parse(Previous().Value, CultureInfo.InvariantCulture))
+                    { Line = Previous().Line };
 
             if (Match(TokenType.String))
                 return new StringNode(Previous().Value) { Line = Previous().Line };
@@ -602,29 +611,63 @@ namespace Weft.Language.Parsing {
                 Consume(TokenType.Symbol, ")", result, "Expected ')' after expression");
                 return result.HasError ? null : expr;
             }
-            
+
             if (Match(TokenType.Symbol, "[")) {
                 Require(LanguageFeatures.Collections, "Collections not enabled", result);
                 if (result.HasError) return null;
                 var elements = new List<AstNode>();
-                
+
                 if (!Match(TokenType.Symbol, "]")) {
                     do {
                         elements.Add(ParseExpression(result));
                         if (result.HasError) return null;
                     } while (Match(TokenType.Symbol, ","));
+
                     Consume(TokenType.Symbol, "]", result, "Expected ']'");
                 }
-                
+
                 return result.HasError ? null : new ArrayLiteralNode(elements) { Line = Previous().Line };
+            }
+
+            if (Match(TokenType.Symbol, "{")) {
+                Require(LanguageFeatures.Collections, "Collections not enabled", result);
+                if (result.HasError) return null;
+
+                var entries = new List<(AstNode Key, AstNode Value)>();
+
+                if (!Match(TokenType.Symbol, "}")) {
+                    do {
+                        AstNode key;
+                        if (Match(TokenType.Identifier))
+                            key = new StringNode(Previous().Value) { Line = Previous().Line };
+                        else if (Match(TokenType.String))
+                            key = new StringNode(Previous().Value) { Line = Previous().Line };
+                        else {
+                            SetError(result, "Expected property name");
+                            return null;
+                        }
+
+                        Consume(TokenType.Symbol, ":", result, "Expected ':' after property name");
+                        if (result.HasError) return null;
+
+                        var value = ParseExpression(result);
+                        if (result.HasError) return null;
+
+                        entries.Add((key, value));
+                    } while (Match(TokenType.Symbol, ","));
+
+                    Consume(TokenType.Symbol, "}", result, "Expected '}'");
+                }
+
+                return result.HasError ? null : new ObjectLiteralNode(entries) { Line = Previous().Line };
             }
 
             var t = Peek();
             SetError(result, $"Unexpected token in expression: {t?.Value ?? "end of input"}");
-            
+
             return null;
         }
-        
+
         private bool Match(TokenType type, string value) {
             if (!Check(type) || Peek().Value != value) return false;
             Advance();
@@ -660,7 +703,7 @@ namespace Weft.Language.Parsing {
         }
 
         private bool Check(TokenType type) => !IsAtEnd() && Peek().Type == type;
-        
+
         private void SetError(ParseResult res, string msg) {
             res.Error = msg;
             res.ErrorLine = Peek()?.Line ?? Previous().Line;

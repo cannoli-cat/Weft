@@ -6,10 +6,15 @@ namespace Weft.Language.Compilation {
     public class WeftCompiler {
         private WeftChunk chunk;
         private readonly List<Local> locals = new();
-        private int scopeDepth, currentLine;
-        
+        private int scopeDepth, currentLine, globalCount;
+        private bool inFunction;
+
         private readonly Stack<LoopContext> loopStack = new();
         private readonly Dictionary<string, (int pc, int arity)> funcMetaData = new();
+        private readonly Dictionary<string, int> globals = new();
+        private readonly Dictionary<string, List<int>> pendingCalls = new();
+
+        private HashSet<string> declaredFuncs;
 
         private struct Local {
             public string name;
@@ -17,15 +22,27 @@ namespace Weft.Language.Compilation {
         }
 
         private struct LoopContext {
-            public int continueTarget;       
+            public int continueTarget;
             public List<int> breakJumps;
         }
 
         public WeftChunk Compile(List<AstNode> program) {
             chunk = new WeftChunk();
             locals.Clear();
+            globals.Clear();
+            globalCount = 0;
             scopeDepth = 0;
+            inFunction = false;
             loopStack.Clear();
+            funcMetaData.Clear();
+            pendingCalls.Clear();
+
+            var knownFuncs = new HashSet<string>();
+            foreach (var node in program)
+                if (node is FuncDeclNode fd)
+                    knownFuncs.Add(fd.Name);
+
+            declaredFuncs = knownFuncs;
 
             foreach (var node in program)
                 CompileStatement(node);
@@ -33,32 +50,40 @@ namespace Weft.Language.Compilation {
             Emit(Op.Halt);
             return chunk;
         }
-        
+
         private void CompileStatement(AstNode node) {
             currentLine = node.Line;
-            
+
             switch (node) {
                 case FuncDeclNode fd:
                     CompileFuncDecl(fd);
                     break;
-                
+
                 case ReturnNode ret:
                     if (ret.Value != null) CompileExpression(ret.Value);
                     else Emit(Op.Const, chunk.AddConstant(null));
-                    
+
                     Emit(Op.Return);
                     break;
-                
+
                 case VarNode v:
                     CompileExpression(v.Value);
-                    AddLocal(v.Name);
+
+                    if (!inFunction && scopeDepth == 0) {
+                        var slot = globalCount++;
+                        globals[v.Name] = slot;
+                        Emit(Op.StoreGlobal, slot);
+                        Emit(Op.Pop);
+                    }
+                    else {
+                        locals.Add(new Local { name = v.Name, depth = scopeDepth });
+                    }
+
                     break;
 
                 case AssignmentNode a:
                     CompileExpression(a.Value);
-                    var assignSlot = ResolveLocal(a.Name);
-                    
-                    Emit(Op.StoreLocal, assignSlot);
+                    ResolveVariable(a.Name, isStore: true);
                     Emit(Op.Pop);
                     break;
 
@@ -103,9 +128,9 @@ namespace Weft.Language.Compilation {
                     Emit(Op.Call, setIdx, 3);
                     Emit(Op.Pop);
                     break;
-                
+
                 case FunctionCallNode call:
-                    CompileExpression(call); 
+                    CompileExpression(call);
                     Emit(Op.Pop);
                     break;
 
@@ -113,11 +138,22 @@ namespace Weft.Language.Compilation {
                     throw new Exception($"Compiler: unhandled statement node {node.GetType().Name}");
             }
         }
-        
+
         private void CompileExpression(AstNode node) {
             currentLine = node.Line;
-            
+
             switch (node) {
+                case ObjectLiteralNode obj:
+                    foreach (var (key, value) in obj.Entries) {
+                        CompileExpression(key);
+                        CompileExpression(value);
+                    }
+
+                    var objIdx = chunk.AddConstant("__object_new");
+                    Emit(Op.Call, objIdx, obj.Entries.Count * 2);
+
+                    break;
+
                 case NumberNode n:
                     Emit(Op.Const, chunk.AddConstant(n.Value));
                     break;
@@ -131,7 +167,7 @@ namespace Weft.Language.Compilation {
                     break;
 
                 case IdentifierNode id:
-                    Emit(Op.LoadLocal, ResolveLocal(id.Name));
+                    ResolveVariable(id.Name, isStore: false);
                     break;
 
                 case UnaryNode u:
@@ -141,6 +177,7 @@ namespace Weft.Language.Compilation {
                         case "!": Emit(Op.Not); break;
                         default: throw new Exception($"Unknown unary operator '{u.Operator}'");
                     }
+
                     break;
 
                 case IncDecNode inc:
@@ -180,7 +217,7 @@ namespace Weft.Language.Compilation {
                     throw new Exception($"Compiler: unhandled expression node {node.GetType().Name}");
             }
         }
-        
+
         private void CompileBinary(BinaryOperationNode bin) {
             if (bin.Operator == "&&") {
                 CompileExpression(bin.Left);
@@ -208,36 +245,38 @@ namespace Weft.Language.Compilation {
             CompileExpression(bin.Right);
 
             switch (bin.Operator) {
-                case "+":  Emit(Op.Add); break;
-                case "-":  Emit(Op.Sub); break;
-                case "*":  Emit(Op.Mul); break;
-                case "/":  Emit(Op.Div); break;
-                case "%":  Emit(Op.Mod); break;
+                case "+": Emit(Op.Add); break;
+                case "-": Emit(Op.Sub); break;
+                case "*": Emit(Op.Mul); break;
+                case "/": Emit(Op.Div); break;
+                case "%": Emit(Op.Mod); break;
                 case "==": Emit(Op.Eq); break;
                 case "!=": Emit(Op.Neq); break;
-                case "<":  Emit(Op.Lt); break;
-                case ">":  Emit(Op.Gt); break;
+                case "<": Emit(Op.Lt); break;
+                case ">": Emit(Op.Gt); break;
                 case "<=": Emit(Op.Lte); break;
                 case ">=": Emit(Op.Gte); break;
                 default: throw new Exception($"Unknown binary operator '{bin.Operator}'");
             }
         }
-        
-        private void CompileIncDec(IncDecNode inc) {
-            var slot = ResolveLocal(inc.Name);
 
+        private void CompileIncDec(IncDecNode inc) {
             if (inc.IsPrefix) {
-                Emit(Op.LoadLocal, slot);
+                ResolveVariable(inc.Name, isStore: false);
+
                 Emit(Op.Const, chunk.AddConstant(1.0));
                 Emit(inc.IsIncrement ? Op.Add : Op.Sub);
-                Emit(Op.StoreLocal, slot);
+
+                ResolveVariable(inc.Name, isStore: true);
             }
             else {
-                Emit(Op.LoadLocal, slot);
-                Emit(Op.LoadLocal, slot);
+                ResolveVariable(inc.Name, isStore: false);
+                ResolveVariable(inc.Name, isStore: false);
+
                 Emit(Op.Const, chunk.AddConstant(1.0));
                 Emit(inc.IsIncrement ? Op.Add : Op.Sub);
-                Emit(Op.StoreLocal, slot);
+
+                ResolveVariable(inc.Name, isStore: true);
                 Emit(Op.Pop);
             }
         }
@@ -248,13 +287,22 @@ namespace Weft.Language.Compilation {
 
             if (funcMetaData.TryGetValue(call.FunctionName, out var meta)) {
                 Emit(Op.CallFunc, meta.pc, meta.arity);
-            } 
+            }
+            else if (declaredFuncs.Contains(call.FunctionName)) {
+                Emit(Op.CallFunc, 0xFFFF, call.Arguments.Count);
+                var patchIdx = chunk.code.Count - 2;
+
+                if (!pendingCalls.ContainsKey(call.FunctionName))
+                    pendingCalls[call.FunctionName] = new List<int>();
+                pendingCalls[call.FunctionName].Add(patchIdx);
+            }
             else {
+                // host function
                 var nameIdx = chunk.AddConstant(call.FunctionName);
                 Emit(Op.Call, nameIdx, call.Arguments.Count);
             }
         }
-        
+
         private void CompileIf(IfNode ifn) {
             CompileExpression(ifn.Condition);
             var jumpToElse = EmitJump(Op.JumpIfFalse);
@@ -272,7 +320,7 @@ namespace Weft.Language.Compilation {
                     CompileBlock(fb);
                 else
                     CompileStatement(ifn.FalseBranch);
-                
+
                 PatchJump(jumpOverElse);
             }
             else {
@@ -334,32 +382,41 @@ namespace Weft.Language.Compilation {
 
             PopLoop(ctx);
         }
-        
+
         private void CompileFuncDecl(FuncDeclNode fd) {
             var skipJump = EmitJump(Op.Jump);
-
             var funcStart = chunk.code.Count;
-            funcMetaData[fd.Name] = (funcStart, fd.Parameters.Count);
-            
+
             var outerLocals = new List<Local>(locals);
             var outerDepth = scopeDepth;
+            var wasInFunction = inFunction;
+
             locals.Clear();
             scopeDepth = 0;
-            
+            inFunction = true;
+
             foreach (var param in fd.Parameters)
-                AddLocal(param);
-            
+                locals.Add(new Local { name = param, depth = 0 });
+
             foreach (var stmt in fd.Body.Statements)
                 CompileStatement(stmt);
-            
+
             Emit(Op.Const, chunk.AddConstant(null));
             Emit(Op.Return);
-            
+
             locals.Clear();
             locals.AddRange(outerLocals);
             scopeDepth = outerDepth;
+            inFunction = wasInFunction;
 
+            funcMetaData[fd.Name] = (funcStart, fd.Parameters.Count);
             PatchJump(skipJump);
+
+            if (pendingCalls.TryGetValue(fd.Name, out var patches)) {
+                foreach (var idx in patches)
+                    chunk.code[idx] = funcStart;
+                pendingCalls.Remove(fd.Name);
+            }
         }
 
         private void CompileBreak() {
@@ -378,7 +435,7 @@ namespace Weft.Language.Compilation {
             var ctx = loopStack.Peek();
             Emit(Op.Jump, ctx.continueTarget);
         }
-        
+
         private void CompileBlock(BlockNode block) {
             BeginScope();
             foreach (var stmt in block.Statements)
@@ -398,16 +455,20 @@ namespace Weft.Language.Compilation {
                 locals.RemoveAt(locals.Count - 1);
             }
         }
-        
-        private void AddLocal(string name) {
-            locals.Add(new Local { name = name, depth = scopeDepth });
-        }
 
-        private int ResolveLocal(string name) {
+        private void ResolveVariable(string name, bool isStore) {
             for (var i = locals.Count - 1; i >= 0; i--) {
-                if (locals[i].name == name)
-                    return i;
+                if (locals[i].name == name) {
+                    Emit(isStore ? Op.StoreLocal : Op.LoadLocal, i);
+                    return;
+                }
             }
+
+            if (globals.TryGetValue(name, out var slot)) {
+                Emit(isStore ? Op.StoreGlobal : Op.LoadGlobal, slot);
+                return;
+            }
+
             throw new Exception($"Undefined variable: '{name}'");
         }
 
@@ -439,7 +500,7 @@ namespace Weft.Language.Compilation {
 
             loopStack.Pop();
         }
-        
+
         private void Emit(Op op) => chunk.Emit(op, currentLine);
         private void Emit(Op op, int operand) => chunk.Emit(op, operand, currentLine);
         private void Emit(Op op, int a, int b) => chunk.Emit(op, a, b, currentLine);

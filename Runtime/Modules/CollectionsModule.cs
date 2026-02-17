@@ -47,7 +47,13 @@ namespace Weft.Runtime.Modules {
                         throw new System.Exception($"Index {i} out of range (length {list.Count}).");
                     return list[i];
                 }
-                throw new System.Exception("Index access requires an array and numeric index.");
+                
+                if (args[0] is Dictionary<string, object> dict) {
+                    var key = args[1]?.ToString();
+                    return dict.TryGetValue(key, out var val) ? val : null;
+                }
+                
+                throw new System.Exception("Index access requires an array/object.");
             });
 
             registrar.Bind("__index_set", (_, args) => {
@@ -58,19 +64,36 @@ namespace Weft.Runtime.Modules {
                     list[i] = args[2];
                     return null;
                 }
-                throw new System.Exception("Index assignment requires an array and numeric index.");
+                
+                if (args[0] is Dictionary<string, object> dict) {
+                    dict[args[1]?.ToString()] = args[2];
+                    return null;
+                }
+                
+                throw new System.Exception("Index assignment requires an array/object.");
             });
 
             registrar.Bind("__member_get", (_, args) => {
                 var memberName = (string)args[1];
 
                 if (args[0] is List<object> list) {
-                    if (memberName == "length")
-                        return (double)list.Count;
+                    if (memberName == "length") return (double)list.Count;
                     throw new System.Exception($"Unknown array member '{memberName}'.");
                 }
-
+                
+                if (args[0] is Dictionary<string, object> dict) {
+                    if (memberName == "length") return (double)dict.Count;
+                    return dict.TryGetValue(memberName, out var val) ? val : null;
+                }
+                
                 throw new System.Exception($"Unknown member '{memberName}' on {args[0]?.GetType().Name ?? "null"}.");
+            });
+            
+            registrar.Bind("__object_new", (_, args) => {
+                var dict = new Dictionary<string, object>();
+                for (var i = 0; i + 1 < args.Length; i += 2)
+                    dict[args[i].ToString()] = args[i + 1];
+                return dict;
             });
         }
 

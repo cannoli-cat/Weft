@@ -2,11 +2,11 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Weft.Demos {
+namespace Weft.Demos.ScriptsDemo.Scripts {
     [RequireComponent(typeof(UIDocument))]
     public class DemoSceneHost : MonoBehaviour {
         private DropdownField dropdown;
-        private ScriptEditor editor;
+        private Demos.ScriptEditor editor;
         private GameObject scriptTarget;
 
         private void OnEnable() {
@@ -18,7 +18,7 @@ namespace Weft.Demos {
         }
 
         private void Init(VisualElement root) {
-            editor = root.Q<ScriptEditor>();
+            editor = root.Q<Demos.ScriptEditor>();
             dropdown = root.Q<DropdownField>("ExampleDropdown");
 
             if (editor != null)

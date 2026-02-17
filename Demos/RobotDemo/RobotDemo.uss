@@ -1,0 +1,184 @@
+#Root {
+    flex-grow: 1;
+    background-color: #1E1E1E;
+    padding: 0;
+    margin: 0;
+}
+
+#Header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background-color: #2D2D2D;
+    border-bottom-width: 1px;
+    border-bottom-color: #3E3E3E;
+    flex-shrink: 0;
+}
+
+#Title {
+    font-size: 18px;
+    color: #CCCCCC;
+    -unity-font-style: bold;
+}
+
+#ExampleDropdown {
+    min-width: 200px;
+    background-color: #3C3C3C;
+    color: #CCCCCC;
+    border-color: #555555;
+    border-radius: 3px;
+}
+
+#ExampleDropdown .unity-base-popup-field__input {
+    background-color: #3C3C3C;
+    color: #CCCCCC;
+    border-color: #555555;
+}
+
+#MainContent {
+    flex-grow: 1;
+    flex-direction: row;
+    min-height: 0;
+}
+
+#GridPanel {
+    width: 40%;
+    min-width: 250px;
+    flex-direction: column;
+    border-right-width: 1px;
+    border-right-color: #3E3E3E;
+    padding: 8px;
+}
+
+RobotGridView {
+    flex-grow: 1;
+    min-height: 250px;
+}
+
+#StatusLabel {
+    color: #88CC88;
+    font-size: 12px;
+    padding: 6px 4px;
+    -unity-text-align: middle-left;
+    flex-shrink: 0;
+    background-color: #252526;
+    border-top-width: 1px;
+    border-top-color: #3E3E3E;
+}
+
+#EditorPanel {
+    flex-grow: 1;
+    flex-direction: column;
+    min-width: 300px;
+}
+
+#EditorArea {
+    flex-grow: 3;
+    padding: 8px;
+    min-height: 0;
+}
+
+#EditorArea TextField {
+    flex-grow: 1;
+}
+
+#EditorArea TextField #unity-text-input {
+    flex-grow: 1;
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    padding: 0;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.01);
+    font-size: 14px;
+    white-space: normal;
+    -unity-text-align: upper-left;
+}
+
+#HighlightOverlay {
+    font-size: 14px;
+    color: #D4D4D4;
+    white-space: normal;
+}
+
+#LineNumbers {
+    font-size: 14px;
+    color: #858585;
+}
+
+#ScriptButtonContainer {
+    flex-direction: row;
+    padding: 6px 16px;
+    background-color: #252526;
+    border-top-width: 1px;
+    border-top-color: #3E3E3E;
+    border-bottom-width: 1px;
+    border-bottom-color: #3E3E3E;
+    flex-shrink: 0;
+}
+
+#ScriptButtonContainer Button {
+    padding: 4px 16px;
+    margin-right: 8px;
+    border-radius: 3px;
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+#RunButton {
+    background-color: #2EA043;
+    color: #FFFFFF;
+    border-width: 0;
+}
+
+#RunButton:hover {
+    background-color: #3FB950;
+}
+
+#PauseButton {
+    background-color: #DA3633;
+    color: #FFFFFF;
+    border-width: 0;
+}
+
+#PauseButton:hover {
+    background-color: #F85149;
+}
+
+#ConsoleContainer {
+    flex-grow: 1;
+    min-height: 80px;
+    max-height: 180px;
+    background-color: #1A1A1A;
+    border-top-width: 1px;
+    border-top-color: #3E3E3E;
+    padding: 8px 16px;
+    overflow: hidden;
+}
+
+#ConsoleHeader {
+    color: #888888;
+    font-size: 11px;
+    margin-bottom: 4px;
+    -unity-font-style: bold;
+}
+
+#ConsoleScroll {
+    flex-grow: 1;
+}
+
+#Output {
+    color: #CCCCCC;
+    font-size: 13px;
+    white-space: normal;
+}
+
+.NoPaddingNoMargin {
+    padding: 0;
+    margin: 0;
+}
+
+.NoBorderNoBackground {
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
