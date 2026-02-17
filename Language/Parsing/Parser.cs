@@ -604,6 +604,7 @@ namespace Weft.Language.Parsing {
 
             if (Match(TokenType.Keyword, "true")) return new BoolNode(true) { Line = Previous().Line };
             if (Match(TokenType.Keyword, "false")) return new BoolNode(false) { Line = Previous().Line };
+            if (Match(TokenType.Keyword, "null")) return new NullNode { Line = Previous().Line };
 
             if (Match(TokenType.Symbol, "(")) {
                 var expr = ParseExpression(result);

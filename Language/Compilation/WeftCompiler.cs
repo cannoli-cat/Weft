@@ -143,6 +143,10 @@ namespace Weft.Language.Compilation {
             currentLine = node.Line;
 
             switch (node) {
+                case NullNode n:
+                    Emit(Op.Const, chunk.AddConstant(null));
+                    break;
+                
                 case ObjectLiteralNode obj:
                     foreach (var (key, value) in obj.Entries) {
                         CompileExpression(key);
