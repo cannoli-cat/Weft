@@ -8,6 +8,10 @@ using Weft.Unity.Engine;
 
 namespace Weft.Language.Compilation {
     public class WeftVM {
+        private const int MaxStack = 512;
+        private const int MaxFrames = 64;
+        private const int MaxGlobals = 256;
+        
         private readonly object[] stack = new object[512];
         private int sp;
         private int pc;
@@ -54,29 +58,39 @@ namespace Weft.Language.Compilation {
                     return MakeError("Gas limit exceeded", pc);
 
                 var instrPc = pc; 
+                
+                if (sp >= stack.Length)
+                    return MakeError("Stack overflow", instrPc);
+                
                 var op = (Op)code[pc++];
 
                 switch (op) {
                     case Op.CallFunc:
                         var startPc = code[pc++];
                         var arity = code[pc++];
-                        
+    
+                        if (frameCount >= frames.Length)
+                            return MakeError("Stack overflow: too many nested calls", instrPc);
+    
                         frames[frameCount++] = new CallFrame {
                             returnPc = pc,
                             baseSlot = sp - arity,
                             funcStartPc = startPc
                         };
-                        
+    
                         pc = startPc;
                         break;
                     
                     case Op.Return:
+                        if (sp < 1) return MakeError("Stack underflow on return", instrPc);
+                        if (frameCount <= 1) return MakeError("Return outside of function", instrPc);
+    
                         var retVal = stack[--sp];
                         var frame = frames[--frameCount];
-                        
+    
                         sp = frame.baseSlot;
                         pc = frame.returnPc;
-                        
+    
                         stack[sp++] = retVal;
                         break;
                     
@@ -106,37 +120,71 @@ namespace Weft.Language.Compilation {
                         break;
                     }
                     case Op.Sub: {
-                        var b = (double)stack[--sp];
-                        var a = (double)stack[--sp];
-                        stack[sp++] = a - b;
+                        if (sp < 2) return MakeError("Stack underflow", instrPc);
+                        
+                        var b = stack[--sp];
+                        var a = stack[--sp];
+                        
+                        if (a is not double da || b is not double db)
+                            return MakeError("Cannot subtract non-numeric values", instrPc);
+                        
+                        stack[sp++] = da - db;
+                        
                         break;
                     }
                     case Op.Mul: {
-                        var b = (double)stack[--sp];
-                        var a = (double)stack[--sp];
-                        stack[sp++] = a * b;
+                        if (sp < 2) 
+                            return MakeError("Stack underflow", instrPc);
+                        
+                        var b = stack[--sp];
+                        var a = stack[--sp];
+                        
+                        if (a is not double da || b is not double db)
+                            return MakeError("Cannot multiply non-numeric values", instrPc);
+                        
+                        stack[sp++] = da * db;
+                        
                         break;
                     }
                     case Op.Div: {
-                        var b = (double)stack[--sp];
-                        var a = (double)stack[--sp];
+                        if (sp < 2) return MakeError("Stack underflow", instrPc);
                         
-                        if (b == 0) 
+                        var b = stack[--sp];
+                        var a = stack[--sp];
+                        
+                        if (a is not double da || b is not double db)
+                            return MakeError("Cannot divide non-numeric values", instrPc);
+                        
+                        if (db == 0)
                             return MakeError("Division by zero", instrPc);
                         
-                        stack[sp++] = a / b;
+                        stack[sp++] = da / db;
+                        
                         break;
                     }
                     case Op.Mod: {
-                        var b = (double)stack[--sp];
-                        var a = (double)stack[--sp];
-                        stack[sp++] = a % b;
+                        if (sp < 2) return MakeError("Stack underflow", instrPc);
+                        
+                        var b = stack[--sp];
+                        var a = stack[--sp];
+                        
+                        if (a is not double da || b is not double db)
+                            return MakeError("Cannot modulo non-numeric values", instrPc);
+                        
+                        stack[sp++] = da % db;
+                        
                         break;
                     }
-                    case Op.Negate:
-                        stack[sp - 1] = -(double)stack[sp - 1];
+                    case Op.Negate: {
+                        if (sp < 1) return MakeError("Stack underflow", instrPc);
+                        
+                        if (stack[sp - 1] is not double d)
+                            return MakeError("Cannot negate a non-numeric value", instrPc);
+                        
+                        stack[sp - 1] = -d;
+                        
                         break;
-
+                    }
                     case Op.Eq: {
                         var b = stack[--sp];
                         var a = stack[--sp];
@@ -150,32 +198,67 @@ namespace Weft.Language.Compilation {
                         break;
                     }
                     case Op.Lt: {
-                        var b = (double)stack[--sp];
-                        var a = (double)stack[--sp];
-                        stack[sp++] = a < b;
+                        if (sp < 2) return MakeError("Stack underflow", instrPc);
+                        
+                        var b = stack[--sp];
+                        var a = stack[--sp];
+                        
+                        if (a is not double da || b is not double db)
+                            return MakeError("Cannot compare non-numeric values with '<'", instrPc);
+                        
+                        stack[sp++] = da < db;
+                        
                         break;
                     }
                     case Op.Gt: {
-                        var b = (double)stack[--sp];
-                        var a = (double)stack[--sp];
-                        stack[sp++] = a > b;
+                        if (sp < 2) return MakeError("Stack underflow", instrPc);
+                        
+                        var b = stack[--sp];
+                        var a = stack[--sp];
+                        
+                        if (a is not double da || b is not double db)
+                            return MakeError("Cannot compare non-numeric values with '>'", instrPc);
+                        
+                        stack[sp++] = da > db;
+                        
                         break;
                     }
                     case Op.Lte: {
-                        var b = (double)stack[--sp];
-                        var a = (double)stack[--sp];
-                        stack[sp++] = a <= b;
+                        if (sp < 2) return MakeError("Stack underflow", instrPc);
+                        
+                        var b = stack[--sp];
+                        var a = stack[--sp];
+                        
+                        if (a is not double da || b is not double db)
+                            return MakeError("Cannot compare non-numeric values with '<='", instrPc);
+                        
+                        stack[sp++] = da <= db;
+                        
                         break;
                     }
                     case Op.Gte: {
-                        var b = (double)stack[--sp];
-                        var a = (double)stack[--sp];
-                        stack[sp++] = a >= b;
+                        if (sp < 2) return MakeError("Stack underflow", instrPc);
+                        
+                        var b = stack[--sp];
+                        var a = stack[--sp];
+                        
+                        if (a is not double da || b is not double db)
+                            return MakeError("Cannot compare non-numeric values with '>='", instrPc);
+                        
+                        stack[sp++] = da >= db;
+                        
                         break;
                     }
-                    case Op.Not:
-                        stack[sp - 1] = !(bool)stack[sp - 1];
+                    case Op.Not: {
+                        if (sp < 1) return MakeError("Stack underflow", instrPc);
+                        
+                        if (stack[sp - 1] is not bool bv)
+                            return MakeError("Cannot apply '!' to a non-boolean value", instrPc);
+                        
+                        stack[sp - 1] = !bv;
+                        
                         break;
+                    }
 
                     case Op.Jump:
                         pc = code[pc];
@@ -240,13 +323,27 @@ namespace Weft.Language.Compilation {
                         Completed = true;
                         return ExecutionResult.SuccessResult();
                     
-                    case Op.LoadGlobal:
-                        stack[sp++] = globals[code[pc++]];
+                    case Op.LoadGlobal: {
+                        var slot = code[pc++];
+                        
+                        if (slot < 0 || slot >= globals.Length)
+                            return MakeError($"Global variable index {slot} out of range", instrPc);
+                        
+                        stack[sp++] = globals[slot];
+                        
                         break;
-                    
-                    case Op.StoreGlobal:
-                        globals[code[pc++]] = stack[sp - 1];
+                    }
+
+                    case Op.StoreGlobal: {
+                        var slot = code[pc++];
+                        
+                        if (slot < 0 || slot >= globals.Length)
+                            return MakeError($"Global variable index {slot} out of range", instrPc);
+                        
+                        globals[slot] = stack[sp - 1];
+                        
                         break;
+                    }
 
                     default:
                         return MakeError($"Unknown opcode: {op}", instrPc);
@@ -265,12 +362,16 @@ namespace Weft.Language.Compilation {
 
         private string[] BuildStackTrace(int errorPc) {
             var trace = new List<string>();
+            const int maxTraceLines = 8;
 
             var line = errorPc < chunk.lines.Count ? chunk.lines[errorPc] : 0;
             var currentFunc = frameCount > 0 ? frames[frameCount - 1].funcStartPc : -1;
             trace.Add($"at {ResolveFuncName(currentFunc)} (line {line})");
 
-            for (var i = frameCount - 1; i >= 1; i--) {
+            var remaining = frameCount - 1;
+            var show = remaining > maxTraceLines ? maxTraceLines - 1 : remaining;
+
+            for (var i = frameCount - 1; i >= frameCount - show; i--) {
                 var retPc = frames[i].returnPc;
                 
                 var callerLine = retPc > 0 && retPc < chunk.lines.Count
@@ -278,8 +379,13 @@ namespace Weft.Language.Compilation {
                     : 0;
                 
                 var callerFunc = frames[i - 1].funcStartPc;
+                
                 trace.Add($"at {ResolveFuncName(callerFunc)} (line {callerLine})");
             }
+
+            var omitted = remaining - show;
+            if (omitted > 0)
+                trace.Add($"... {omitted} more frames");
 
             return trace.ToArray();
         }
