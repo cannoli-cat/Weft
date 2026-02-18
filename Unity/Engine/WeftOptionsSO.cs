@@ -30,7 +30,10 @@ namespace Weft.Unity.Engine {
 
         [Tooltip("func / return")]
         public bool functions = false;
-
+        
+        [Tooltip("abs, sqrt, pow, floor, ceil, round, min, max...")]
+        public bool math = false;
+        
         [Header("Custom Modules (drop your ScriptableObject modules here)")]
         public WeftModuleSO[] customModules;
 
@@ -49,6 +52,7 @@ namespace Weft.Unity.Engine {
             if (processes) modules.Add(new ProcessModule());
             if (collections) modules.Add(new CollectionsModule());
             if (functions) modules.Add(new FunctionsModule());
+            if (math) modules.Add(new MathModule());
 
             if (customModules != null) {
                 foreach (var custom in customModules) {

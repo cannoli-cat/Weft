@@ -23,6 +23,34 @@ namespace Weft.Runtime.Modules {
                 console?.Clear();
                 return null;
             });
+            
+            registrar.Bind("number", (_, args) => {
+                if (args.Length != 1) throw new System.Exception("number() requires exactly one argument.");
+                var str = args[0]?.ToString();
+                
+                if (double.TryParse(str, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var result)) 
+                    return result;
+                
+                throw new System.Exception($"Cannot convert '{str}' to a number.");
+            });
+            
+            registrar.Bind("string", (_, args) => {
+                if (args.Length != 1) throw new System.Exception("string() requires exactly one argument.");
+                return args[0]?.ToString() ?? "null";
+            });
+            
+            registrar.Bind("type", (_, args) => {
+                if (args.Length != 1) throw new System.Exception("type() requires exactly one argument.");
+                return args[0] switch {
+                    null => "null",
+                    double => "number",
+                    string => "string",
+                    bool => "bool",
+                    System.Collections.Generic.List<object> => "array",
+                    System.Collections.Generic.Dictionary<string, object> => "object",
+                    _ => "unknown"
+                };
+            });
         }
 
         public void Setup(ScriptContext ctx) {

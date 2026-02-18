@@ -272,6 +272,37 @@ for (var i = 0; i < colors.length; i++) {
 }
 "
             },
+            new() {
+                name = "Math Functions",
+                code = @"// Built in math functions
+print(""abs(-5): "" + abs(-5));
+print(""floor(3.7): "" + floor(3.7));
+print(""ceil(3.2): "" + ceil(3.2));
+print(""round(3.5): "" + round(3.5));
+print(""sqrt(16): "" + sqrt(16));
+print(""pow(2, 8): "" + pow(2, 8));
+print(""min(3, 7): "" + min(3, 7));
+print(""max(3, 7): "" + max(3, 7));
+print(""random: "" + random());
+print(""randomRange(1, 10): "" + randomRange(1, 10));
+"
+            },
+            new() {
+                name = "Type & Casting",
+                code = @"// type(), number(), string()
+print(type(42));        // number
+print(type(""hello"")); // string
+print(type(true));      // bool
+print(type(null));      // null
+print(type([1, 2]));    // array
+
+var n = number(""42"");
+print(n + 8);           // 50
+
+var s = string(123);
+print(s + "" is text""); // 123 is text
+"
+            }
         };
     }
 }
