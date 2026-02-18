@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Weft.Demos.RobotDemo.Scripts {
+namespace Weft.Samples.RobotDemo.Scripts {
     /// <summary>
     /// A VisualElement that renders the RobotGrid state.
     /// Polls the grid each frame to reflect robot movement.

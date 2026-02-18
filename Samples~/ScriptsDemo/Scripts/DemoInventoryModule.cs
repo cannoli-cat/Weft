@@ -4,7 +4,7 @@ using Weft.Runtime.Modules;
 using Weft.Unity.Engine;
 using Weft.Unity.Services;
 
-namespace Weft.Demos.ScriptsDemo.Scripts {
+namespace Weft.Samples.ScriptsDemo.Scripts {
     public sealed class DemoInventoryModule : IWeftModule {
         public string Id => "demo-inventory";
         public LanguageFeatures ParserFeatures => LanguageFeatures.None;

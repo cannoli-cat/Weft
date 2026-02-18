@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Weft.Demos.RobotDemo.Scripts {
+namespace Weft.Samples.RobotDemo.Scripts {
     /// <summary>
     /// A simple grid world for the robot demo.
     /// Walls block movement, gems can be collected.

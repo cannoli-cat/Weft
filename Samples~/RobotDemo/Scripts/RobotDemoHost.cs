@@ -1,8 +1,9 @@
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Weft.Unity.Engine;
 
-namespace Weft.Demos.RobotDemo.Scripts {
+namespace Weft.Samples.RobotDemo.Scripts {
     /// <summary>
     /// Scene host for the Robot demo.
     /// Sets up the grid, wires the script editor to target the robot GameObject,

@@ -146,7 +146,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 42974278}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 20cb5afe90774177ab061b572d5e06db, type: 3}
+  m_Script: {fileID: 11500000, guid: bc9479c49a0841749a0c5b5dead9b635, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Weft.Demos.RobotDemo.Scripts.RobotDemoHost
   robotObject: {fileID: 710496358}
@@ -164,7 +164,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
   m_PanelSettings: {fileID: 11400000, guid: 49d74ea8a0cf7c749a437ab18530748b, type: 2}
   m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 9197481963319205126, guid: 8dd1185705259ff47abf4ecdd2ba9d4f, type: 3}
+  sourceAsset: {fileID: 9197481963319205126, guid: 94a94ed5684511f4590d302ae883d0ae, type: 3}
   m_SortingOrder: 0
   m_Position: 0
   m_WorldSpaceSizeMode: 1
@@ -307,7 +307,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 710496358}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f5c77ffe585f4c6a91c4736eb312909b, type: 3}
+  m_Script: {fileID: 11500000, guid: f1a88487bdf60c242b24096032956bb4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Weft.Demos.RobotDemo.Scripts.RobotBindings
   stepDelay: 0.15
@@ -320,7 +320,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 710496358}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ed4277d942a6483db7cae7c10ac4a2b4, type: 3}
+  m_Script: {fileID: 11500000, guid: 916801bb67b696b40aea8c0466a8e044, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Weft.Demos.RobotDemo.Scripts.RobotGrid
   width: 8

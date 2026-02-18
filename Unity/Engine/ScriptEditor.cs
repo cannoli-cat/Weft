@@ -6,7 +6,7 @@ using Weft.Runtime.Services;
 using Weft.Unity.Engine;
 using Weft.Unity.Services;
 
-namespace Weft.Demos {
+namespace Weft.Unity.Engine {
     [UxmlElement]
     public partial class ScriptEditor : VisualElement {
         private readonly TextField inputField;

@@ -1,6 +1,6 @@
-using Weft.Demos.ScriptsDemo.Scripts;
+using Weft.Samples.ScriptsDemo.Scripts;
 
-namespace Weft.Demos.RobotDemo.Scripts {
+namespace Weft.Samples.RobotDemo.Scripts {
     public static class RobotDemoScripts {
         public static readonly DemoScripts.Entry[] All = {
             new() {

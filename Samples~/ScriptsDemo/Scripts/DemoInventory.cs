@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Weft.Demos.ScriptsDemo.Scripts {
+namespace Weft.Samples.ScriptsDemo.Scripts {
     public class DemoInventory : MonoBehaviour {
         private readonly List<(string name, int qty)> items = new();
 

@@ -1,10 +1,9 @@
-using System;
 using UnityEngine;
 using Weft.Runtime.Binding;
 using Weft.Runtime.Scheduling;
 using Weft.Unity.Engine;
 
-namespace Weft.Demos.RobotDemo.Scripts {
+namespace Weft.Samples.RobotDemo.Scripts {
     /// <summary>
     /// Drop this MonoBehaviour on any GameObject alongside a RobotGrid
     /// to expose robot-control functions to Weft scripts.

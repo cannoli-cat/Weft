@@ -1,4 +1,4 @@
-<UXML xmlns="UnityEngine.UIElements" xmlns:weft="Weft.Demos" editor-extension-mode="False">
+<UXML xmlns="UnityEngine.UIElements" xmlns:weft="Weft.Unity.Engine" editor-extension-mode="False">
     <Style src="project://database/Assets/Weft/Demos/RobotDemo/RobotDemo.uss"/>
     <VisualElement name="Root">
         <VisualElement name="Header">

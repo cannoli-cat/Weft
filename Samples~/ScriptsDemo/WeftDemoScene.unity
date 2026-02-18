@@ -151,7 +151,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
   m_PanelSettings: {fileID: 11400000, guid: 49d74ea8a0cf7c749a437ab18530748b, type: 2}
   m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 9197481963319205126, guid: cbbe505840ce0cd44bffeee882b9daaa, type: 3}
+  sourceAsset: {fileID: 9197481963319205126, guid: f57ed814fe4de764c8aacaad962e5b73, type: 3}
   m_SortingOrder: 0
   m_Position: 0
   m_WorldSpaceSizeMode: 1
@@ -184,7 +184,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 124424565}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d98b1a57e64c49d4caa4ebf6f9e20c52, type: 3}
+  m_Script: {fileID: 11500000, guid: b2b5ef823e885ac4bbef1c21b82f6acf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Weft.Demos.DemoSceneHost
 --- !u!1 &519420028
@@ -370,6 +370,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Weft.Unity.Engine.WeftEngine
   optionsAsset: {fileID: 11400000, guid: bc0011949331d82448e42c98f4f1e22c, type: 2}
   rebindOnAwake: 1
+  maxCachedScripts: 100
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

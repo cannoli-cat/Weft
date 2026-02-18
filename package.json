@@ -1,0 +1,30 @@
+{
+    "name": "com.cannolicat.weft",
+    "version": "0.1.0",
+    "displayName": "Weft",
+    "description": "A lightweight JavaScript-like scripting language and runtime for Unity.",
+    "unity": "6000.0",
+    "author": {
+        "name": "Tyler Wolfe",
+        "url": "https://cannoli-cat.github.io"
+    },
+    "license": "MIT",
+    "keywords": [
+        "scripting",
+        "runtime",
+        "language",
+        "sandbox"
+    ],
+    "samples": [
+        {
+            "displayName": "Scripts Demo",
+            "description": "Basic Weft scripting examples.",
+            "path": "Samples~/ScriptsDemo"
+        },
+        {
+            "displayName": "Robot Demo",
+            "description": "Robot grid pathfinding demo using Weft.",
+            "path": "Samples~/RobotDemo"
+        }
+    ]
+}
