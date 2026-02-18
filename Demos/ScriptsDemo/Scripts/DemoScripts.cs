@@ -8,7 +8,7 @@ namespace Weft.Demos.ScriptsDemo.Scripts {
         public static readonly Entry[] All = {
             new() {
                 name = "Hello World",
-                code = @"// Hello World - the basics
+                code = @"// Hello World. The basics
 print(""Hello from Weft!"");
 print(""2 + 2 = "" + (2 + 2));
 "
@@ -88,10 +88,10 @@ var i = 0;
 while (true) {
     i++;
     if (i % 2 == 0) {
-        continue; // skip even numbers
+        continue;
     }
     if (i > 10) {
-        break; // stop at 10
+        break;
     }
     print(""odd: "" + i);
 }
@@ -176,29 +176,29 @@ printInventory();
             },
             new() {
                 name = "Collections",
-                code = @"// Arrays: create, access, modify
+                code = @"// Arrays. Create, access, modify
 var fruits = [""apple"", ""banana"", ""cherry""];
 print(""Length: "" + fruits.length);
 print(""First: "" + fruits[0]);
 print(""Last: "" + fruits[2]);
 
-// modify by index
+// Modify by index
 fruits[1] = ""blueberry"";
 print(""After swap: "" + fruits[1]);
 
-// push and pop
+// Push and pop
 fruits.push(""dragonfruit"");
 print(""After push, length: "" + fruits.length);
 
 var removed = fruits.pop();
 print(""Popped: "" + removed);
 
-// loop over an array
+// Loop over an array
 for (var i = 0; i < fruits.length; i++) {
     print(i + "": "" + fruits[i]);
 }
 
-// remove by index
+// Remove by index
 fruits.remove(0);
 print(""After removing index 0:"");
 for (var i = 0; i < fruits.length; i++) {
@@ -208,24 +208,24 @@ for (var i = 0; i < fruits.length; i++) {
             },
             new() {
                 name = "Functions",
-                code = @"// User defined functions
-func add(a, b) {
+                code = @"// User-defined functions
+function add(a, b) {
     return a + b;
 }
 
-func greet(name) {
+function greet(name) {
     print(""Hello, "" + name + ""!"");
 }
 
 greet(""Weft"");
 print(""3 + 5 = "" + add(3, 5));
 
-// functions calling functions
-func square(x) {
+// Functions calling functions
+function square(x) {
     return x * x;
 }
 
-func sumOfSquares(a, b) {
+function sumOfSquares(a, b) {
     return add(square(a), square(b));
 }
 
@@ -235,7 +235,7 @@ print(""3² + 4² = "" + sumOfSquares(3, 4));
             new() {
                 name = "Recursion",
                 code = @"// Recursive functions
-func fib(n) {
+function fib(n) {
     if (n <= 1) { return n; }
     return fib(n - 1) + fib(n - 2);
 }
@@ -244,7 +244,7 @@ for (var i = 0; i < 10; i++) {
     print(""fib("" + i + "") = "" + fib(i));
 }
 
-func factorial(n) {
+function factorial(n) {
     if (n <= 1) { return 1; }
     return n * factorial(n - 1);
 }
@@ -301,6 +301,51 @@ print(n + 8);           // 50
 
 var s = string(123);
 print(s + "" is text""); // 123 is text
+"
+            },
+            new() {
+                name = "Closures",
+                code = @"// Closures are functions that capture variables from enclosing scope
+function makeAdder(x) {
+    function inner(y) {
+        return x + y;
+    }
+    return inner;
+}
+
+var add5 = makeAdder(5);
+var add10 = makeAdder(10);
+
+print(""add5(3) = "" + add5(3));
+print(""add10(3) = "" + add10(3));
+
+// Closure over mutable variable
+function makeCounter() {
+    var count = 0;
+    function increment() {
+        count = count + 1;
+        return count;
+    }
+    return increment;
+}
+
+var counter = makeCounter();
+print(""counter: "" + counter() + "", "" + counter() + "", "" + counter());
+
+// Nested closure captures through two levels
+function outer() {
+    var a = 10;
+    function middle() {
+        var b = 20;
+        function inner() {
+            return a + b;
+        }
+        return inner();
+    }
+    return middle();
+}
+
+print(""nested: "" + outer());
 "
             }
         };

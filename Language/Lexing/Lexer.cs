@@ -8,7 +8,7 @@ namespace Weft.Language.Lexing {
             "var", "if", "else", "true", "false",
             "do", "while", "for",
             "return", "break",
-            "continue", "func",
+            "continue", "function",
             "null"
         };
         

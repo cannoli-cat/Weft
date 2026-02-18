@@ -111,20 +111,20 @@ if (won()) {
                 code = @"// Depth-first search, guaranteed to find every gem
 var visited = {};
 
-func faceDir(dir) {
+function faceDir(dir) {
     while (facing() != dir) {
         right();
     }
 }
 
-func opposite(dir) {
+function opposite(dir) {
     if (dir == ""north"") return ""south"";
     if (dir == ""south"") return ""north"";
     if (dir == ""east"") return ""west"";
     return ""east"";
 }
 
-func dfs() {
+function dfs() {
     var key = posX() + "","" + posY();
     if (visited[key]) return;
     if (won()) return;

@@ -1,26 +1,37 @@
-using System;
 using System.Collections.Generic;
 using Weft.Language.AST;
 
 namespace Weft.Language.Compilation {
     public class WeftCompiler {
         public WeftError Error { get; private set; }
-        
+
         private WeftChunk chunk;
-        private readonly List<Local> locals = new();
-        private int scopeDepth, currentLine, globalCount;
-        private bool inFunction;
+        private FuncScope current;
+        private int currentLine, globalCount;
 
         private readonly Stack<LoopContext> loopStack = new();
-        private readonly Dictionary<string, (int pc, int arity)> funcMetaData = new();
         private readonly Dictionary<string, int> globals = new();
-        private readonly Dictionary<string, List<int>> pendingCalls = new();
-
-        private HashSet<string> declaredFuncs;
 
         private struct Local {
             public string name;
             public int depth;
+            public bool isCaptured;
+        }
+
+        private struct UpvalueEntry {
+            public int index;
+            public bool isLocal;
+        }
+
+        private class FuncScope {
+            public readonly List<Local> locals = new();
+            public readonly List<UpvalueEntry> upvalues = new();
+            public int scopeDepth;
+            public readonly FuncScope enclosing;
+
+            public FuncScope(FuncScope enclosing = null) {
+                this.enclosing = enclosing;
+            }
         }
 
         private struct LoopContext {
@@ -30,24 +41,25 @@ namespace Weft.Language.Compilation {
 
         public WeftChunk Compile(List<AstNode> program) {
             chunk = new WeftChunk();
-            locals.Clear();
             globals.Clear();
             globalCount = 0;
-            scopeDepth = 0;
-            inFunction = false;
             loopStack.Clear();
-            funcMetaData.Clear();
-            pendingCalls.Clear();
+            current = new FuncScope();
 
-            var knownFuncs = new HashSet<string>();
+            foreach (var node in program) {
+                if (node is FuncDeclNode fd)
+                    globals[fd.Name] = globalCount++;
+                else if (node is VarNode v)
+                    globals[v.Name] = globalCount++;
+            }
+
             foreach (var node in program)
                 if (node is FuncDeclNode fd)
-                    knownFuncs.Add(fd.Name);
-
-            declaredFuncs = knownFuncs;
+                    CompileFuncDecl(fd);
 
             foreach (var node in program)
-                CompileStatement(node);
+                if (node is not FuncDeclNode)
+                    CompileStatement(node);
 
             Emit(Op.Halt);
             return chunk;
@@ -71,14 +83,17 @@ namespace Weft.Language.Compilation {
                 case VarNode v:
                     CompileExpression(v.Value);
 
-                    if (!inFunction && scopeDepth == 0) {
-                        var slot = globalCount++;
-                        globals[v.Name] = slot;
+                    if (current.enclosing == null && current.scopeDepth == 0) {
+                        if (!globals.TryGetValue(v.Name, out var slot)) {
+                            slot = globalCount++;
+                            globals[v.Name] = slot;
+                        }
+                        
                         Emit(Op.StoreGlobal, slot);
                         Emit(Op.Pop);
                     }
                     else {
-                        locals.Add(new Local { name = v.Name, depth = scopeDepth });
+                        current.locals.Add(new Local { name = v.Name, depth = current.scopeDepth });
                     }
 
                     break;
@@ -126,9 +141,12 @@ namespace Weft.Language.Compilation {
                     CompileExpression(idx.Target);
                     CompileExpression(idx.Index);
                     CompileExpression(idx.Value);
+
                     var setIdx = chunk.AddConstant("__index_set");
+
                     Emit(Op.Call, setIdx, 3);
                     Emit(Op.Pop);
+
                     break;
 
                 case FunctionCallNode call:
@@ -146,10 +164,10 @@ namespace Weft.Language.Compilation {
             currentLine = node.Line;
 
             switch (node) {
-                case NullNode n:
+                case NullNode:
                     Emit(Op.Const, chunk.AddConstant(null));
                     break;
-                
+
                 case ObjectLiteralNode obj:
                     foreach (var (key, value) in obj.Entries) {
                         CompileExpression(key);
@@ -180,13 +198,13 @@ namespace Weft.Language.Compilation {
                 case UnaryNode u:
                     CompileExpression(u.Operand);
                     switch (u.Operator) {
-                        case "-": 
-                            Emit(Op.Negate); 
+                        case "-":
+                            Emit(Op.Negate);
                             break;
-                        case "!": 
-                            Emit(Op.Not); 
+                        case "!":
+                            Emit(Op.Not);
                             break;
-                        default: 
+                        default:
                             SetError($"Unknown unary operator '{u.Operator}'");
                             break;
                     }
@@ -208,22 +226,28 @@ namespace Weft.Language.Compilation {
                 case ArrayLiteralNode arr:
                     foreach (var elem in arr.Elements)
                         CompileExpression(elem);
+
                     var arrIdx = chunk.AddConstant("__array_new");
                     Emit(Op.Call, arrIdx, arr.Elements.Count);
+
                     break;
 
                 case IndexAccessNode idx:
                     CompileExpression(idx.Target);
                     CompileExpression(idx.Index);
+
                     var getIdx = chunk.AddConstant("__index_get");
                     Emit(Op.Call, getIdx, 2);
+
                     break;
 
                 case MemberAccessNode mem:
                     CompileExpression(mem.Target);
                     Emit(Op.Const, chunk.AddConstant(mem.Member));
+
                     var memIdx = chunk.AddConstant("__member_get");
                     Emit(Op.Call, memIdx, 2);
+
                     break;
 
                 default:
@@ -259,40 +283,40 @@ namespace Weft.Language.Compilation {
             CompileExpression(bin.Right);
 
             switch (bin.Operator) {
-                case "+": 
-                    Emit(Op.Add); 
+                case "+":
+                    Emit(Op.Add);
                     break;
-                case "-": 
-                    Emit(Op.Sub); 
+                case "-":
+                    Emit(Op.Sub);
                     break;
-                case "*": 
-                    Emit(Op.Mul); 
+                case "*":
+                    Emit(Op.Mul);
                     break;
-                case "/": 
-                    Emit(Op.Div); 
+                case "/":
+                    Emit(Op.Div);
                     break;
-                case "%": 
-                    Emit(Op.Mod); 
+                case "%":
+                    Emit(Op.Mod);
                     break;
-                case "==": 
-                    Emit(Op.Eq); 
+                case "==":
+                    Emit(Op.Eq);
                     break;
-                case "!=": 
-                    Emit(Op.Neq); 
+                case "!=":
+                    Emit(Op.Neq);
                     break;
-                case "<": 
-                    Emit(Op.Lt); 
+                case "<":
+                    Emit(Op.Lt);
                     break;
-                case ">": 
-                    Emit(Op.Gt); 
+                case ">":
+                    Emit(Op.Gt);
                     break;
-                case "<=": 
-                    Emit(Op.Lte); 
+                case "<=":
+                    Emit(Op.Lte);
                     break;
-                case ">=": 
-                    Emit(Op.Gte); 
+                case ">=":
+                    Emit(Op.Gte);
                     break;
-                default: 
+                default:
                     SetError($"Unknown binary operator '{bin.Operator}'");
                     break;
             }
@@ -323,19 +347,11 @@ namespace Weft.Language.Compilation {
             foreach (var arg in call.Arguments)
                 CompileExpression(arg);
 
-            if (funcMetaData.TryGetValue(call.FunctionName, out var meta)) {
-                Emit(Op.CallFunc, meta.pc, meta.arity);
-            }
-            else if (declaredFuncs.Contains(call.FunctionName)) {
-                Emit(Op.CallFunc, 0xFFFF, call.Arguments.Count);
-                var patchIdx = chunk.code.Count - 2;
-
-                if (!pendingCalls.ContainsKey(call.FunctionName))
-                    pendingCalls[call.FunctionName] = new List<int>();
-                pendingCalls[call.FunctionName].Add(patchIdx);
+            if (IsKnownVariable(call.FunctionName)) {
+                ResolveVariable(call.FunctionName, isStore: false);
+                Emit(Op.CallClosure, call.Arguments.Count);
             }
             else {
-                // host function
                 var nameIdx = chunk.AddConstant(call.FunctionName);
                 Emit(Op.Call, nameIdx, call.Arguments.Count);
             }
@@ -425,16 +441,11 @@ namespace Weft.Language.Compilation {
             var skipJump = EmitJump(Op.Jump);
             var funcStart = chunk.code.Count;
 
-            var outerLocals = new List<Local>(locals);
-            var outerDepth = scopeDepth;
-            var wasInFunction = inFunction;
-
-            locals.Clear();
-            scopeDepth = 0;
-            inFunction = true;
+            var inner = new FuncScope(current);
+            current = inner;
 
             foreach (var param in fd.Parameters)
-                locals.Add(new Local { name = param, depth = 0 });
+                current.locals.Add(new Local { name = param, depth = 0 });
 
             foreach (var stmt in fd.Body.Statements)
                 CompileStatement(stmt);
@@ -442,19 +453,29 @@ namespace Weft.Language.Compilation {
             Emit(Op.Const, chunk.AddConstant(null));
             Emit(Op.Return);
 
-            locals.Clear();
-            locals.AddRange(outerLocals);
-            scopeDepth = outerDepth;
-            inFunction = wasInFunction;
+            var upvalues = new List<UpvalueEntry>(current.upvalues);
 
-            funcMetaData[fd.Name] = (funcStart, fd.Parameters.Count);
+            current = current.enclosing;
+
             chunk.funcNames[funcStart] = fd.Name;
             PatchJump(skipJump);
 
-            if (pendingCalls.TryGetValue(fd.Name, out var patches)) {
-                foreach (var idx in patches)
-                    chunk.code[idx] = funcStart;
-                pendingCalls.Remove(fd.Name);
+            EmitRaw((int)Op.Closure);
+            EmitRaw(funcStart);
+            EmitRaw(fd.Parameters.Count);
+            EmitRaw(upvalues.Count);
+
+            foreach (var up in upvalues) {
+                EmitRaw(up.isLocal ? 1 : 0);
+                EmitRaw(up.index);
+            }
+
+            if (current.enclosing == null && current.scopeDepth == 0) {
+                Emit(Op.StoreGlobal, globals[fd.Name]);
+                Emit(Op.Pop);
+            }
+            else {
+                current.locals.Add(new Local { name = fd.Name, depth = current.scopeDepth });
             }
         }
 
@@ -487,24 +508,44 @@ namespace Weft.Language.Compilation {
         }
 
         private void BeginScope() {
-            scopeDepth++;
+            current.scopeDepth++;
         }
 
         private void EndScope() {
-            scopeDepth--;
+            current.scopeDepth--;
 
-            while (locals.Count > 0 && locals[^1].depth > scopeDepth) {
+            var localsToRemove = 0;
+            var hasCaptured = false;
+
+            for (var i = current.locals.Count - 1; i >= 0; i--) {
+                if (current.locals[i].depth <= current.scopeDepth) break;
+                if (current.locals[i].isCaptured) hasCaptured = true;
+                localsToRemove++;
+            }
+
+            if (hasCaptured) {
+                var firstSlot = current.locals.Count - localsToRemove;
+                Emit(Op.CloseUpvalues, firstSlot);
+            }
+
+            for (var i = 0; i < localsToRemove; i++) {
                 Emit(Op.Pop);
-                locals.RemoveAt(locals.Count - 1);
+                current.locals.RemoveAt(current.locals.Count - 1);
             }
         }
 
         private void ResolveVariable(string name, bool isStore) {
-            for (var i = locals.Count - 1; i >= 0; i--) {
-                if (locals[i].name == name) {
+            for (var i = current.locals.Count - 1; i >= 0; i--) {
+                if (current.locals[i].name == name) {
                     Emit(isStore ? Op.StoreLocal : Op.LoadLocal, i);
                     return;
                 }
+            }
+
+            var upIdx = ResolveUpvalue(current, name);
+            if (upIdx >= 0) {
+                Emit(isStore ? Op.StoreUpvalue : Op.LoadUpvalue, upIdx);
+                return;
             }
 
             if (globals.TryGetValue(name, out var slot)) {
@@ -543,10 +584,65 @@ namespace Weft.Language.Compilation {
 
             loopStack.Pop();
         }
-        
+
+        private static int ResolveUpvalue(FuncScope scope, string name) {
+            if (scope.enclosing == null) return -1;
+
+            for (var i = scope.enclosing.locals.Count - 1; i >= 0; i--) {
+                if (scope.enclosing.locals[i].name != name) continue;
+
+                var local = scope.enclosing.locals[i];
+                local.isCaptured = true;
+                scope.enclosing.locals[i] = local;
+
+                return AddUpvalue(scope, i, true);
+            }
+
+            var upIdx = ResolveUpvalue(scope.enclosing, name);
+            if (upIdx >= 0)
+                return AddUpvalue(scope, upIdx, false);
+
+            return -1;
+        }
+
+        private static int AddUpvalue(FuncScope scope, int index, bool isLocal) {
+            for (var i = 0; i < scope.upvalues.Count; i++) {
+                var up = scope.upvalues[i];
+                if (up.index == index && up.isLocal == isLocal)
+                    return i;
+            }
+
+            scope.upvalues.Add(new UpvalueEntry { index = index, isLocal = isLocal });
+            return scope.upvalues.Count - 1;
+        }
+
+        private bool IsKnownVariable(string name) {
+            for (var i = current.locals.Count - 1; i >= 0; i--)
+                if (current.locals[i].name == name)
+                    return true;
+
+            if (globals.ContainsKey(name)) return true;
+
+            var scope = current.enclosing;
+            while (scope != null) {
+                for (var i = scope.locals.Count - 1; i >= 0; i--)
+                    if (scope.locals[i].name == name)
+                        return true;
+
+                scope = scope.enclosing;
+            }
+
+            return false;
+        }
+
         private void SetError(string msg) {
-            if (Error == null) 
+            if (Error == null)
                 Error = new WeftError(ErrorPhase.Compile, msg, currentLine);
+        }
+
+        private void EmitRaw(int value) {
+            chunk.code.Add(value);
+            chunk.lines.Add(currentLine);
         }
 
         private void Emit(Op op) => chunk.Emit(op, currentLine);

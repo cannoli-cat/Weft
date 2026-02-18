@@ -56,7 +56,7 @@ namespace Weft.Language.Parsing {
             }
 
             switch (token.Type) {
-                case TokenType.Keyword when token.Value == "func":
+                case TokenType.Keyword when token.Value == "function":
                     Require(LanguageFeatures.Functions, "Functions not enabled", result);
                     return result.HasError ? null : ParseFuncDecl(result);
 

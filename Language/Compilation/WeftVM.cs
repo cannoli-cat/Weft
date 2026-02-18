@@ -11,16 +11,17 @@ namespace Weft.Language.Compilation {
         private const int MaxStack = 512;
         private const int MaxFrames = 64;
         private const int MaxGlobals = 256;
-        
-        private readonly object[] stack = new object[512];
+
         private int sp;
         private int pc;
         private WeftChunk chunk;
         private ScriptContext context;
-        private CallFrame[] frames = new CallFrame[64];
         private int frameCount;
-        
-        private readonly object[] globals = new object[256];
+
+        private readonly object[] globals = new object[MaxGlobals];
+        private readonly object[] stack = new object[MaxStack];
+        private readonly CallFrame[] frames = new CallFrame[MaxFrames];
+        private readonly List<UpvalueCell> openUpvalues = new();
 
         public bool Completed { get; private set; }
 
@@ -28,6 +29,7 @@ namespace Weft.Language.Compilation {
             public int returnPc;
             public int baseSlot;
             public int funcStartPc;
+            public UpvalueCell[] upvalues;
         }
 
         public void Load(WeftChunk compiled, ScriptContext ctx) {
@@ -57,43 +59,109 @@ namespace Weft.Language.Compilation {
                 if (--gas <= 0)
                     return MakeError("Gas limit exceeded", pc);
 
-                var instrPc = pc; 
-                
+                var instrPc = pc;
+
                 if (sp >= stack.Length)
                     return MakeError("Stack overflow", instrPc);
-                
+
                 var op = (Op)code[pc++];
 
                 switch (op) {
-                    case Op.CallFunc:
-                        var startPc = code[pc++];
+                    case Op.Closure: {
+                        var funcPc = code[pc++];
                         var arity = code[pc++];
-    
+                        var upCount = code[pc++];
+                        var ups = new UpvalueCell[upCount];
+
+                        for (var i = 0; i < upCount; i++) {
+                            var isLocal = code[pc++] == 1;
+                            var index = code[pc++];
+
+                            if (isLocal)
+                                ups[i] = CaptureUpvalue(frames[frameCount - 1].baseSlot + index);
+                            else
+                                ups[i] = frames[frameCount - 1].upvalues[index];
+                        }
+
+                        stack[sp++] = new WeftClosure(funcPc, arity, ups);
+                        break;
+                    }
+
+                    case Op.CallClosure: {
+                        var argc = code[pc++];
+                        var obj = stack[--sp]; // pop closure from top
+
+                        if (obj is not WeftClosure closure)
+                            return MakeError("Cannot call non-function value", instrPc);
+
                         if (frameCount >= frames.Length)
                             return MakeError("Stack overflow: too many nested calls", instrPc);
-    
+
                         frames[frameCount++] = new CallFrame {
                             returnPc = pc,
-                            baseSlot = sp - arity,
+                            baseSlot = sp - argc,
+                            funcStartPc = closure.funcPc,
+                            upvalues = closure.upvalues
+                        };
+
+                        pc = closure.funcPc;
+                        break;
+                    }
+
+                    case Op.LoadUpvalue: {
+                        var idx = code[pc++];
+                        var cell = frames[frameCount - 1].upvalues[idx];
+                        stack[sp++] = cell.isClosed ? cell.value : stack[cell.location];
+                        break;
+                    }
+
+                    case Op.StoreUpvalue: {
+                        var idx = code[pc++];
+                        var cell = frames[frameCount - 1].upvalues[idx];
+                        if (cell.isClosed)
+                            cell.value = stack[sp - 1];
+                        else
+                            stack[cell.location] = stack[sp - 1];
+                        break;
+                    }
+
+                    case Op.CloseUpvalues: {
+                        var fromSlot = code[pc++];
+                        CloseUpvaluesFrom(fromSlot);
+                        break;
+                    }
+
+                    case Op.CallFunc:
+                        var startPc = code[pc++];
+                        var funcArity = code[pc++];
+
+                        if (frameCount >= frames.Length)
+                            return MakeError("Stack overflow: too many nested calls", instrPc);
+
+                        frames[frameCount++] = new CallFrame {
+                            returnPc = pc,
+                            baseSlot = sp - funcArity,
                             funcStartPc = startPc
                         };
-    
+
                         pc = startPc;
                         break;
-                    
+
                     case Op.Return:
                         if (sp < 1) return MakeError("Stack underflow on return", instrPc);
                         if (frameCount <= 1) return MakeError("Return outside of function", instrPc);
-    
+
                         var retVal = stack[--sp];
                         var frame = frames[--frameCount];
-    
+                        
+                        CloseUpvaluesFrom(frame.baseSlot);
+
                         sp = frame.baseSlot;
                         pc = frame.returnPc;
-    
+
                         stack[sp++] = retVal;
                         break;
-                    
+
                     case Op.Const:
                         stack[sp++] = constants[code[pc++]];
                         break;
@@ -121,68 +189,68 @@ namespace Weft.Language.Compilation {
                     }
                     case Op.Sub: {
                         if (sp < 2) return MakeError("Stack underflow", instrPc);
-                        
+
                         var b = stack[--sp];
                         var a = stack[--sp];
-                        
+
                         if (a is not double da || b is not double db)
                             return MakeError("Cannot subtract non-numeric values", instrPc);
-                        
+
                         stack[sp++] = da - db;
-                        
+
                         break;
                     }
                     case Op.Mul: {
-                        if (sp < 2) 
+                        if (sp < 2)
                             return MakeError("Stack underflow", instrPc);
-                        
+
                         var b = stack[--sp];
                         var a = stack[--sp];
-                        
+
                         if (a is not double da || b is not double db)
                             return MakeError("Cannot multiply non-numeric values", instrPc);
-                        
+
                         stack[sp++] = da * db;
-                        
+
                         break;
                     }
                     case Op.Div: {
                         if (sp < 2) return MakeError("Stack underflow", instrPc);
-                        
+
                         var b = stack[--sp];
                         var a = stack[--sp];
-                        
+
                         if (a is not double da || b is not double db)
                             return MakeError("Cannot divide non-numeric values", instrPc);
-                        
+
                         if (db == 0)
                             return MakeError("Division by zero", instrPc);
-                        
+
                         stack[sp++] = da / db;
-                        
+
                         break;
                     }
                     case Op.Mod: {
                         if (sp < 2) return MakeError("Stack underflow", instrPc);
-                        
+
                         var b = stack[--sp];
                         var a = stack[--sp];
-                        
+
                         if (a is not double da || b is not double db)
                             return MakeError("Cannot modulo non-numeric values", instrPc);
-                        
+
                         stack[sp++] = da % db;
-                        
+
                         break;
                     }
                     case Op.Negate: {
                         if (sp < 1) return MakeError("Stack underflow", instrPc);
-                        
+
                         if (stack[sp - 1] is not double d)
                             return MakeError("Cannot negate a non-numeric value", instrPc);
-                        
+
                         stack[sp - 1] = -d;
-                        
+
                         break;
                     }
                     case Op.Eq: {
@@ -199,64 +267,64 @@ namespace Weft.Language.Compilation {
                     }
                     case Op.Lt: {
                         if (sp < 2) return MakeError("Stack underflow", instrPc);
-                        
+
                         var b = stack[--sp];
                         var a = stack[--sp];
-                        
+
                         if (a is not double da || b is not double db)
                             return MakeError("Cannot compare non-numeric values with '<'", instrPc);
-                        
+
                         stack[sp++] = da < db;
-                        
+
                         break;
                     }
                     case Op.Gt: {
                         if (sp < 2) return MakeError("Stack underflow", instrPc);
-                        
+
                         var b = stack[--sp];
                         var a = stack[--sp];
-                        
+
                         if (a is not double da || b is not double db)
                             return MakeError("Cannot compare non-numeric values with '>'", instrPc);
-                        
+
                         stack[sp++] = da > db;
-                        
+
                         break;
                     }
                     case Op.Lte: {
                         if (sp < 2) return MakeError("Stack underflow", instrPc);
-                        
+
                         var b = stack[--sp];
                         var a = stack[--sp];
-                        
+
                         if (a is not double da || b is not double db)
                             return MakeError("Cannot compare non-numeric values with '<='", instrPc);
-                        
+
                         stack[sp++] = da <= db;
-                        
+
                         break;
                     }
                     case Op.Gte: {
                         if (sp < 2) return MakeError("Stack underflow", instrPc);
-                        
+
                         var b = stack[--sp];
                         var a = stack[--sp];
-                        
+
                         if (a is not double da || b is not double db)
                             return MakeError("Cannot compare non-numeric values with '>='", instrPc);
-                        
+
                         stack[sp++] = da >= db;
-                        
+
                         break;
                     }
                     case Op.Not: {
                         if (sp < 1) return MakeError("Stack underflow", instrPc);
-                        
+
                         if (stack[sp - 1] is not bool bv)
                             return MakeError("Cannot apply '!' to a non-boolean value", instrPc);
-                        
+
                         stack[sp - 1] = !bv;
-                        
+
                         break;
                     }
 
@@ -267,7 +335,7 @@ namespace Weft.Language.Compilation {
                     case Op.JumpIfFalse: {
                         var target = code[pc++];
                         var val = stack[--sp];
-                        
+
                         if (!IsTruthy(val))
                             pc = target;
                         break;
@@ -276,7 +344,7 @@ namespace Weft.Language.Compilation {
                     case Op.JumpIfTrue: {
                         var target = code[pc++];
                         var val = stack[--sp];
-                        
+
                         if (IsTruthy(val))
                             pc = target;
                         break;
@@ -286,7 +354,7 @@ namespace Weft.Language.Compilation {
                         var nameIdx = code[pc++];
                         var argc = code[pc++];
                         var funcName = (string)constants[nameIdx];
-                        
+
                         var args = new object[argc];
                         for (var i = argc - 1; i >= 0; i--)
                             args[i] = stack[--sp];
@@ -316,32 +384,33 @@ namespace Weft.Language.Compilation {
                         catch (Exception ex) {
                             return MakeError($"Function '{funcName}' failed: {ex.Message}", instrPc);
                         }
+
                         break;
                     }
 
                     case Op.Halt:
                         Completed = true;
                         return ExecutionResult.SuccessResult();
-                    
+
                     case Op.LoadGlobal: {
                         var slot = code[pc++];
-                        
+
                         if (slot < 0 || slot >= globals.Length)
                             return MakeError($"Global variable index {slot} out of range", instrPc);
-                        
+
                         stack[sp++] = globals[slot];
-                        
+
                         break;
                     }
 
                     case Op.StoreGlobal: {
                         var slot = code[pc++];
-                        
+
                         if (slot < 0 || slot >= globals.Length)
                             return MakeError($"Global variable index {slot} out of range", instrPc);
-                        
+
                         globals[slot] = stack[sp - 1];
-                        
+
                         break;
                     }
 
@@ -349,11 +418,11 @@ namespace Weft.Language.Compilation {
                         return MakeError($"Unknown opcode: {op}", instrPc);
                 }
             }
-            
+
             Completed = true;
             return ExecutionResult.SuccessResult();
         }
-        
+
         private string ResolveFuncName(int funcPc) {
             if (funcPc >= 0 && chunk.funcNames.TryGetValue(funcPc, out var name))
                 return name;
@@ -373,13 +442,13 @@ namespace Weft.Language.Compilation {
 
             for (var i = frameCount - 1; i >= frameCount - show; i--) {
                 var retPc = frames[i].returnPc;
-                
+
                 var callerLine = retPc > 0 && retPc < chunk.lines.Count
                     ? chunk.lines[retPc - 1]
                     : 0;
-                
+
                 var callerFunc = frames[i - 1].funcStartPc;
-                
+
                 trace.Add($"at {ResolveFuncName(callerFunc)} (line {callerLine})");
             }
 
@@ -394,16 +463,40 @@ namespace Weft.Language.Compilation {
             var line = atPc < chunk.lines.Count ? chunk.lines[atPc] : 0;
             var trace = BuildStackTrace(atPc);
             var err = new WeftError(ErrorPhase.Runtime, msg, line, trace);
-            
+
             return ExecutionResult.ErrorResult(err.ToString());
         }
-        
+
+        private UpvalueCell CaptureUpvalue(int slot) {
+            for (var i = 0; i < openUpvalues.Count; i++) {
+                if (!openUpvalues[i].isClosed && openUpvalues[i].location == slot)
+                    return openUpvalues[i];
+            }
+
+            var cell = new UpvalueCell(slot);
+
+            openUpvalues.Add(cell);
+            return cell;
+        }
+
+        private void CloseUpvaluesFrom(int fromSlot) {
+            for (var i = openUpvalues.Count - 1; i >= 0; i--) {
+                var cell = openUpvalues[i];
+                if (cell.isClosed || cell.location < fromSlot) continue;
+
+                cell.value = stack[cell.location];
+                cell.isClosed = true;
+
+                openUpvalues.RemoveAt(i);
+            }
+        }
+
         private static bool IsTruthy(object val) {
             if (val == null) return false;
             if (val is bool b) return b;
             if (val is double d) return d != 0;
-            
-            return true; 
+
+            return true;
         }
 
         private new static bool Equals(object a, object b) {

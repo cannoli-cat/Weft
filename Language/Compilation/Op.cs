@@ -24,5 +24,11 @@ namespace Weft.Language.Compilation {
         
         CallFunc,
         Return,
+        
+        Closure,
+        CallClosure,
+        LoadUpvalue,
+        StoreUpvalue,
+        CloseUpvalues,
     }
 }
