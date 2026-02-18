@@ -253,6 +253,25 @@ print(""5! = "" + factorial(5));
 print(""10! = "" + factorial(10));
 "
             },
+            new() {
+                name = "String Methods",
+                code = @"// String methods demo
+var msg = ""  Hello, Weft!  "";
+print(""length: "" + msg.length);
+print(""trimmed: '"" + msg.trim() + ""'"");
+print(""upper: "" + msg.trim().toUpper());
+print(""indexOf 'Weft': "" + msg.indexOf(""Weft""));
+print(""contains: "" + msg.contains(""Weft""));
+print(""replace: "" + msg.trim().replace(""Weft"", ""World""));
+print(""slice(0,5): "" + msg.trim().slice(0, 5));
+
+var csv = ""red,green,blue"";
+var colors = csv.split("","");
+for (var i = 0; i < colors.length; i++) {
+    print(i + "": "" + colors[i]);
+}
+"
+            },
         };
     }
 }
