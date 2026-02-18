@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Weft.Language.Runtime;
 using Weft.Runtime.Binding;
 using Weft.Runtime.Scheduling;
@@ -22,6 +23,7 @@ namespace Weft.Language.Compilation {
         private struct CallFrame {
             public int returnPc;
             public int baseSlot;
+            public int funcStartPc;
         }
 
         public void Load(WeftChunk compiled, ScriptContext ctx) {
@@ -31,7 +33,7 @@ namespace Weft.Language.Compilation {
             sp = 0;
             Completed = false;
             frameCount = 1;
-            frames[0] = new CallFrame { returnPc = -1, baseSlot = 0};
+            frames[0] = new CallFrame { returnPc = -1, baseSlot = 0, funcStartPc = -1 };
         }
 
         /// <summary>
@@ -49,7 +51,7 @@ namespace Weft.Language.Compilation {
 
             while (pc < code.Count) {
                 if (--gas <= 0)
-                    return ExecutionResult.ErrorResult($"[Line: {chunk.lines[pc]}] Gas limit exceeded.");
+                    return MakeError("Gas limit exceeded", pc);
 
                 var instrPc = pc; 
                 var op = (Op)code[pc++];
@@ -61,7 +63,8 @@ namespace Weft.Language.Compilation {
                         
                         frames[frameCount++] = new CallFrame {
                             returnPc = pc,
-                            baseSlot = sp - arity
+                            baseSlot = sp - arity,
+                            funcStartPc = startPc
                         };
                         
                         pc = startPc;
@@ -117,7 +120,10 @@ namespace Weft.Language.Compilation {
                     case Op.Div: {
                         var b = (double)stack[--sp];
                         var a = (double)stack[--sp];
-                        if (b == 0) return ExecutionResult.ErrorResult($"[Line: {chunk.lines[instrPc]}] Division by zero.");
+                        
+                        if (b == 0) 
+                            return MakeError("Division by zero", instrPc);
+                        
                         stack[sp++] = a / b;
                         break;
                     }
@@ -203,7 +209,7 @@ namespace Weft.Language.Compilation {
                             args[i] = stack[--sp];
 
                         if (!WeftRegistry.TryGet(funcName, out var hostFunc))
-                            return ExecutionResult.ErrorResult($"[Line: {chunk.lines[instrPc]}] Unknown function: {funcName}");
+                            return MakeError($"Unknown function '{funcName}'", instrPc);
 
                         try {
                             var ret = hostFunc(context, args);
@@ -225,7 +231,7 @@ namespace Weft.Language.Compilation {
                             stack[sp++] = ret;
                         }
                         catch (Exception ex) {
-                            return ExecutionResult.ErrorResult($"[Line: {chunk.lines[instrPc]}] Function '{funcName}' failed: {ex.Message}");
+                            return MakeError($"Function '{funcName}' failed: {ex.Message}", instrPc);
                         }
                         break;
                     }
@@ -243,12 +249,47 @@ namespace Weft.Language.Compilation {
                         break;
 
                     default:
-                        return ExecutionResult.ErrorResult($"[Line: {chunk.lines[instrPc]}] Unknown opcode: {op}");
+                        return MakeError($"Unknown opcode: {op}", instrPc);
                 }
             }
             
             Completed = true;
             return ExecutionResult.SuccessResult();
+        }
+        
+        private string ResolveFuncName(int funcPc) {
+            if (funcPc >= 0 && chunk.funcNames.TryGetValue(funcPc, out var name))
+                return name;
+            return "<script>";
+        }
+
+        private string[] BuildStackTrace(int errorPc) {
+            var trace = new List<string>();
+
+            var line = errorPc < chunk.lines.Count ? chunk.lines[errorPc] : 0;
+            var currentFunc = frameCount > 0 ? frames[frameCount - 1].funcStartPc : -1;
+            trace.Add($"at {ResolveFuncName(currentFunc)} (line {line})");
+
+            for (var i = frameCount - 1; i >= 1; i--) {
+                var retPc = frames[i].returnPc;
+                
+                var callerLine = retPc > 0 && retPc < chunk.lines.Count
+                    ? chunk.lines[retPc - 1]
+                    : 0;
+                
+                var callerFunc = frames[i - 1].funcStartPc;
+                trace.Add($"at {ResolveFuncName(callerFunc)} (line {callerLine})");
+            }
+
+            return trace.ToArray();
+        }
+
+        private ExecutionResult MakeError(string msg, int atPc) {
+            var line = atPc < chunk.lines.Count ? chunk.lines[atPc] : 0;
+            var trace = BuildStackTrace(atPc);
+            var err = new WeftError(ErrorPhase.Runtime, msg, line, trace);
+            
+            return ExecutionResult.ErrorResult(err.ToString());
         }
         
         private static bool IsTruthy(object val) {

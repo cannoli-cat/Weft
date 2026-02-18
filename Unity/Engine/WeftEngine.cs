@@ -157,20 +157,17 @@ namespace Weft.Unity.Engine {
 
             var lex = Lexer.Tokenize(source);
             if (lex.HasError)
-                return (null, lex.Error);
+                return (null, lex.Error.ToString());
 
             var parse = new Parser(Options.Features).Parse(lex.Tokens);
             if (parse.HasError)
-                return (null, $"[Line: {parse.ErrorLine}] {parse.Error}");
+                return (null, parse.Error.ToString());
+            
+            var compiler = new WeftCompiler();
+            var chunk = compiler.Compile(parse.Nodes);
 
-            WeftChunk chunk;
-            try {
-                var compiler = new WeftCompiler();
-                chunk = compiler.Compile(parse.Nodes);
-            }
-            catch (System.Exception ex) {
-                return (null, $"Bytecode compilation error: {ex.Message}");
-            }
+            if (compiler.Error != null)
+                return (null, compiler.Error.ToString());
 
             if (scriptCache.Count >= maxCachedScripts) {
                 var firstKey = scriptCache.Keys.First();

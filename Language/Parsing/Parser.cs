@@ -706,8 +706,8 @@ namespace Weft.Language.Parsing {
         private bool Check(TokenType type) => !IsAtEnd() && Peek().Type == type;
 
         private void SetError(ParseResult res, string msg) {
-            res.Error = msg;
-            res.ErrorLine = Peek()?.Line ?? Previous().Line;
+            var line = Peek()?.Line ?? Previous().Line;
+            res.Error = new WeftError(ErrorPhase.Parse, msg, line);
         }
     }
 }

@@ -4,6 +4,8 @@ using Weft.Language.AST;
 
 namespace Weft.Language.Compilation {
     public class WeftCompiler {
+        public WeftError Error { get; private set; }
+        
         private WeftChunk chunk;
         private readonly List<Local> locals = new();
         private int scopeDepth, currentLine, globalCount;
@@ -135,7 +137,8 @@ namespace Weft.Language.Compilation {
                     break;
 
                 default:
-                    throw new Exception($"Compiler: unhandled statement node {node.GetType().Name}");
+                    SetError($"Compiler: unhandled statement node {node.GetType().Name}");
+                    break;
             }
         }
 
@@ -177,9 +180,15 @@ namespace Weft.Language.Compilation {
                 case UnaryNode u:
                     CompileExpression(u.Operand);
                     switch (u.Operator) {
-                        case "-": Emit(Op.Negate); break;
-                        case "!": Emit(Op.Not); break;
-                        default: throw new Exception($"Unknown unary operator '{u.Operator}'");
+                        case "-": 
+                            Emit(Op.Negate); 
+                            break;
+                        case "!": 
+                            Emit(Op.Not); 
+                            break;
+                        default: 
+                            SetError($"Unknown unary operator '{u.Operator}'");
+                            break;
                     }
 
                     break;
@@ -218,7 +227,8 @@ namespace Weft.Language.Compilation {
                     break;
 
                 default:
-                    throw new Exception($"Compiler: unhandled expression node {node.GetType().Name}");
+                    SetError($"Compiler: unhandled expression node {node.GetType().Name}");
+                    break;
             }
         }
 
@@ -249,18 +259,42 @@ namespace Weft.Language.Compilation {
             CompileExpression(bin.Right);
 
             switch (bin.Operator) {
-                case "+": Emit(Op.Add); break;
-                case "-": Emit(Op.Sub); break;
-                case "*": Emit(Op.Mul); break;
-                case "/": Emit(Op.Div); break;
-                case "%": Emit(Op.Mod); break;
-                case "==": Emit(Op.Eq); break;
-                case "!=": Emit(Op.Neq); break;
-                case "<": Emit(Op.Lt); break;
-                case ">": Emit(Op.Gt); break;
-                case "<=": Emit(Op.Lte); break;
-                case ">=": Emit(Op.Gte); break;
-                default: throw new Exception($"Unknown binary operator '{bin.Operator}'");
+                case "+": 
+                    Emit(Op.Add); 
+                    break;
+                case "-": 
+                    Emit(Op.Sub); 
+                    break;
+                case "*": 
+                    Emit(Op.Mul); 
+                    break;
+                case "/": 
+                    Emit(Op.Div); 
+                    break;
+                case "%": 
+                    Emit(Op.Mod); 
+                    break;
+                case "==": 
+                    Emit(Op.Eq); 
+                    break;
+                case "!=": 
+                    Emit(Op.Neq); 
+                    break;
+                case "<": 
+                    Emit(Op.Lt); 
+                    break;
+                case ">": 
+                    Emit(Op.Gt); 
+                    break;
+                case "<=": 
+                    Emit(Op.Lte); 
+                    break;
+                case ">=": 
+                    Emit(Op.Gte); 
+                    break;
+                default: 
+                    SetError($"Unknown binary operator '{bin.Operator}'");
+                    break;
             }
         }
 
@@ -414,6 +448,7 @@ namespace Weft.Language.Compilation {
             inFunction = wasInFunction;
 
             funcMetaData[fd.Name] = (funcStart, fd.Parameters.Count);
+            chunk.funcNames[funcStart] = fd.Name;
             PatchJump(skipJump);
 
             if (pendingCalls.TryGetValue(fd.Name, out var patches)) {
@@ -424,8 +459,10 @@ namespace Weft.Language.Compilation {
         }
 
         private void CompileBreak() {
-            if (loopStack.Count == 0)
-                throw new Exception("'break' outside of loop");
+            if (loopStack.Count == 0) {
+                SetError("'break' outside of loop");
+                return;
+            }
 
             var ctx = loopStack.Peek();
             var breakJump = EmitJump(Op.Jump);
@@ -433,8 +470,10 @@ namespace Weft.Language.Compilation {
         }
 
         private void CompileContinue() {
-            if (loopStack.Count == 0)
-                throw new Exception("'continue' outside of loop");
+            if (loopStack.Count == 0) {
+                SetError("'continue' outside of loop");
+                return;
+            }
 
             var ctx = loopStack.Peek();
             Emit(Op.Jump, ctx.continueTarget);
@@ -473,7 +512,7 @@ namespace Weft.Language.Compilation {
                 return;
             }
 
-            throw new Exception($"Undefined variable: '{name}'");
+            SetError($"Undefined variable '{name}'");
         }
 
         private int EmitJump(Op op) {
@@ -503,6 +542,11 @@ namespace Weft.Language.Compilation {
                 PatchJump(jumpIdx);
 
             loopStack.Pop();
+        }
+        
+        private void SetError(string msg) {
+            if (Error == null) 
+                Error = new WeftError(ErrorPhase.Compile, msg, currentLine);
         }
 
         private void Emit(Op op) => chunk.Emit(op, currentLine);

@@ -5,6 +5,7 @@ namespace Weft.Language.Compilation {
         public readonly List<int> code = new();
         public readonly List<object> constants = new();
         public readonly List<int> lines = new();
+        public readonly Dictionary<int, string> funcNames = new(); // pc -> name
 
         public int AddConstant(object value) {
             for (var i = 0; i < constants.Count; i++) {

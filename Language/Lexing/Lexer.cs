@@ -92,7 +92,7 @@ namespace Weft.Language.Lexing {
                         result.Tokens.Add(new Token(TokenType.String, sb.ToString(), line, raw));
                     }
                     else
-                        result.Error = "Unterminated string literal";
+                        result.Error = new WeftError(ErrorPhase.Lex, "Unterminated string literal", line);
 
                     continue;
                 }
@@ -132,7 +132,7 @@ namespace Weft.Language.Lexing {
                         }
 
                         if (!closed) {
-                            result.Error = "Unterminated block comment";
+                            result.Error = new WeftError(ErrorPhase.Lex, "Unterminated block comment", line);
                             break;
                         }
 
@@ -184,7 +184,7 @@ namespace Weft.Language.Lexing {
                 }
                 
                 // if the character is unrecognized, set an error and continue
-                result.Error = $"Unexpected character: {c}";
+                result.Error = new WeftError(ErrorPhase.Lex, $"Unexpected character: {c}", line);
                 i++;
             }
     
