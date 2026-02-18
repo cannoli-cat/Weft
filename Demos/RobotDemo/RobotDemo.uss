@@ -93,6 +93,7 @@ RobotGridView {
     font-size: 14px;
     white-space: normal;
     -unity-text-align: upper-left;
+    --unity-cursor-color: white;
 }
 
 #HighlightOverlay {
