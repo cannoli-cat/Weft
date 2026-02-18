@@ -146,7 +146,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 42974278}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bc9479c49a0841749a0c5b5dead9b635, type: 3}
+  m_Script: {fileID: 11500000, guid: 046f9d52123c2c1458dd882875c82d4e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Weft.Demos.RobotDemo.Scripts.RobotDemoHost
   robotObject: {fileID: 710496358}
@@ -162,9 +162,9 @@ MonoBehaviour:
   m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
-  m_PanelSettings: {fileID: 11400000, guid: 49d74ea8a0cf7c749a437ab18530748b, type: 2}
+  m_PanelSettings: {fileID: 11400000, guid: 8d8ab6803aa70e045a0ed8544c174021, type: 2}
   m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 9197481963319205126, guid: 94a94ed5684511f4590d302ae883d0ae, type: 3}
+  sourceAsset: {fileID: 9197481963319205126, guid: 1f1287e031056ea4f8967015e1d1a570, type: 3}
   m_SortingOrder: 0
   m_Position: 0
   m_WorldSpaceSizeMode: 1
@@ -307,7 +307,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 710496358}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f1a88487bdf60c242b24096032956bb4, type: 3}
+  m_Script: {fileID: 11500000, guid: b2d8d9be3ac8b9841ad54bb6dc08585e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Weft.Demos.RobotDemo.Scripts.RobotBindings
   stepDelay: 0.15
@@ -320,7 +320,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 710496358}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 916801bb67b696b40aea8c0466a8e044, type: 3}
+  m_Script: {fileID: 11500000, guid: be955cfda93d7ae4daa73d6a1c41cce0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Weft.Demos.RobotDemo.Scripts.RobotGrid
   width: 8
@@ -351,7 +351,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1931028025}
-  - component: {fileID: 1931028024}
+  - component: {fileID: 1931028026}
   m_Layer: 0
   m_Name: Weft
   m_TagString: Untagged
@@ -359,21 +359,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1931028024
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1931028023}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6132d58b4e5024f43880bd0d67d573dc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Weft.Unity.Engine.WeftEngine
-  optionsAsset: {fileID: 11400000, guid: bc0011949331d82448e42c98f4f1e22c, type: 2}
-  rebindOnAwake: 1
-  maxCachedScripts: 100
 --- !u!4 &1931028025
 Transform:
   m_ObjectHideFlags: 0
@@ -389,6 +374,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1931028026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1931028023}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b20dfc712934a184b8bc585d94401eb4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Weft::Weft.Unity.Engine.WeftEngine
+  optionsAsset: {fileID: 11400000, guid: 2e482f267ac64f04c9bff6141e5322c8, type: 2}
+  rebindOnAwake: 1
+  maxCachedScripts: 100
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
