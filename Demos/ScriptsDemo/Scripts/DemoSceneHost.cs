@@ -6,7 +6,7 @@ namespace Weft.Demos.ScriptsDemo.Scripts {
     [RequireComponent(typeof(UIDocument))]
     public class DemoSceneHost : MonoBehaviour {
         private DropdownField dropdown;
-        private Demos.ScriptEditor editor;
+        private ScriptEditor editor;
         private GameObject scriptTarget;
 
         private void OnEnable() {
@@ -18,7 +18,7 @@ namespace Weft.Demos.ScriptsDemo.Scripts {
         }
 
         private void Init(VisualElement root) {
-            editor = root.Q<Demos.ScriptEditor>();
+            editor = root.Q<ScriptEditor>();
             dropdown = root.Q<DropdownField>("ExampleDropdown");
 
             if (editor != null)

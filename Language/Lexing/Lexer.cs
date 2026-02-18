@@ -177,7 +177,7 @@ namespace Weft.Language.Lexing {
                 }
 
                 // handle symbols
-                if ("(){}[];:,.".Contains(c)) {
+                if ("(){}[];:,.?".Contains(c)) {
                     result.Tokens.Add(new Token(TokenType.Symbol, c.ToString(), line));
                     i++;
                     continue;

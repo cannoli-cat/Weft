@@ -136,7 +136,7 @@ namespace Weft.Language.Parsing {
                 if (result.HasError) return null;
 
                 var value = ParseExpression(result);
-                if (result.HasError) return null;
+                if (result.HasError) return null; 
 
                 Consume(TokenType.Symbol, ";", result, "Expected ';'");
                 return new IndexAssignNode(new IdentifierNode(name), index, value) { Line = Previous().Line };
@@ -422,7 +422,16 @@ namespace Weft.Language.Parsing {
             return nodes;
         }
 
-        private AstNode ParseExpression(ParseResult result) => ParseLogicalOr(result);
+        private AstNode ParseExpression(ParseResult result) {
+            var node = ParseLogicalOr(result);
+            if (result.HasError || !Match(TokenType.Symbol, "?")) return node;
+            
+            var trueExpr = ParseExpression(result);
+            Consume(TokenType.Symbol, ":", result, "Expected ':' in ternary");
+            var falseExpr = ParseExpression(result);
+            
+            return new IfNode(node, trueExpr, falseExpr) { Line = node.Line };
+        }
 
         private FunctionCallNode ParseFunctionCall(string functionName, ParseResult result) {
             var arguments = new List<AstNode>();

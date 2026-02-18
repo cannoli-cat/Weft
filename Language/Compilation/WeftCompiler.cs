@@ -164,6 +164,19 @@ namespace Weft.Language.Compilation {
             currentLine = node.Line;
 
             switch (node) {
+                case IfNode ifn:
+                    CompileExpression(ifn.Condition);
+                    
+                    var jumpToElse = EmitJump(Op.JumpIfFalse);
+                    CompileExpression(ifn.TrueBranch);
+                    
+                    var jumpOverElse = EmitJump(Op.Jump);
+                    PatchJump(jumpToElse);
+                    
+                    CompileExpression(ifn.FalseBranch);
+                    PatchJump(jumpOverElse);
+                    break;
+                
                 case NullNode:
                     Emit(Op.Const, chunk.AddConstant(null));
                     break;
