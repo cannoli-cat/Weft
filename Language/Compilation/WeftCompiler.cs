@@ -237,7 +237,58 @@ namespace Weft.Language.Compilation {
                     break;
 
                 case FunctionCallNode call:
-                    CompileCall(call);
+                    if (call.FunctionName == "__forEach") {
+                        CompileExpression(call.Arguments[0]);
+                        current.locals.Add(new Local { name = "$arr", depth = current.scopeDepth });
+                        
+                        CompileExpression(call.Arguments[1]);
+                        current.locals.Add(new Local { name = "$fn", depth = current.scopeDepth });
+                        
+                        Emit(Op.Const, chunk.AddConstant(0.0));
+                        current.locals.Add(new Local { name = "$i", depth = current.scopeDepth });
+                        
+                        var loopStart = chunk.code.Count;
+
+                        Emit(Op.LoadLocal, current.locals.Count - 1);
+
+                        Emit(Op.LoadLocal, current.locals.Count - 3);
+                        Emit(Op.Const, chunk.AddConstant("length"));
+                        Emit(Op.Call, chunk.AddConstant("__member_get"), 2);
+
+                        Emit(Op.Lt);
+                        var exitJump = EmitJump(Op.JumpIfFalse);
+
+                        Emit(Op.LoadLocal, current.locals.Count - 3);
+                        Emit(Op.LoadLocal, current.locals.Count - 1);
+                        Emit(Op.Call, chunk.AddConstant("__index_get"), 2);
+                        
+                        Emit(Op.LoadLocal, current.locals.Count - 2); // $fn
+                        Emit(Op.CallClosure, 1);
+                        
+                        Emit(Op.Pop);
+                        
+                        Emit(Op.LoadLocal, current.locals.Count - 1); // $i
+                        Emit(Op.Const, chunk.AddConstant(1.0));
+                        Emit(Op.Add);
+                        Emit(Op.StoreLocal, current.locals.Count - 1); // $i = result
+                        Emit(Op.Pop);
+
+                        Emit(Op.Jump, loopStart);
+                        PatchJump(exitJump);
+                        
+                        current.locals.RemoveAt(current.locals.Count - 1);
+                        Emit(Op.Pop);
+                        
+                        current.locals.RemoveAt(current.locals.Count - 1);
+                        Emit(Op.Pop);
+                        
+                        current.locals.RemoveAt(current.locals.Count - 1);
+                        Emit(Op.Pop);
+
+                        Emit(Op.Const, chunk.AddConstant(null));
+                    }
+                    else CompileCall(call);
+                    
                     break;
 
                 case ArrayLiteralNode arr:
