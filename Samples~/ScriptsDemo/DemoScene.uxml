@@ -1,5 +1,5 @@
 <UXML xmlns="UnityEngine.UIElements" xmlns:weft="Weft.Unity.Engine" editor-extension-mode="False">
-    <Style src="project://database/Assets/Weft/Demos/ScriptsDemo/DemoScene.uss?fileID=7433441132597879392&amp;guid=7d0cf9ba563c4c24784ccf49db3887b2&amp;type=3#DemoScene"/>
+    <Style src="DemoScene.uss"/>
     <VisualElement name="Root">
         <VisualElement name="Header">
             <Label name="Title" text="Weft Demo"/>

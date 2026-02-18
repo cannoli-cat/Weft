@@ -1,5 +1,5 @@
 <UXML xmlns="UnityEngine.UIElements" xmlns:weft="Weft.Unity.Engine" editor-extension-mode="False">
-    <Style src="project://database/Assets/Weft/Demos/RobotDemo/RobotDemo.uss"/>
+    <Style src="RobotDemo.uss"/>
     <VisualElement name="Root">
         <VisualElement name="Header">
             <Label name="Title" text="Weft Robot Demo"/>

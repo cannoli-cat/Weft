@@ -1,8 +1,11 @@
-using Weft.Samples.ScriptsDemo.Scripts;
-
-namespace Weft.Samples.RobotDemo.Scripts {
+ namespace Weft.Samples.RobotDemo.Scripts {
     public static class RobotDemoScripts {
-        public static readonly DemoScripts.Entry[] All = {
+        public struct Entry {
+            public string name;
+            public string code;
+        }
+        
+        public static readonly Entry[] All = {
             new() {
                 name = "First Steps",
                 code = @"// Move the robot and look around
