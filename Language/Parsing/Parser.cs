@@ -671,6 +671,29 @@ namespace Weft.Language.Parsing {
 
                 return result.HasError ? null : new ObjectLiteralNode(entries) { Line = Previous().Line };
             }
+            
+            if (Match(TokenType.Keyword, "function")) {
+                Require(LanguageFeatures.Functions, "Functions not enabled", result);
+                if (result.HasError) return null;
+
+                Consume(TokenType.Symbol, "(", result, "Expected '(' after 'function'");
+                if (result.HasError) return null;
+
+                var parameters = new List<string>();
+                if (!Match(TokenType.Symbol, ")")) {
+                    do {
+                        var paramTok = Consume(TokenType.Identifier, result, "Expected parameter name");
+                        if (result.HasError) return null;
+                        parameters.Add(paramTok.Value);
+                    } while (Match(TokenType.Symbol, ","));
+
+                    Consume(TokenType.Symbol, ")", result, "Expected ')' after parameters");
+                    if (result.HasError) return null;
+                }
+
+                var body = ParseBlockOrStatement(result);
+                return result.HasError ? null : new FuncDeclNode(null, parameters, body) { Line = Previous().Line };
+            }
 
             var t = Peek();
             SetError(result, $"Unexpected token in expression: {t?.Value ?? "end of input"}");

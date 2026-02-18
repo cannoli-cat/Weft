@@ -88,7 +88,7 @@ namespace Weft.Language.Compilation {
                             slot = globalCount++;
                             globals[v.Name] = slot;
                         }
-                        
+
                         Emit(Op.StoreGlobal, slot);
                         Emit(Op.Pop);
                     }
@@ -164,19 +164,23 @@ namespace Weft.Language.Compilation {
             currentLine = node.Line;
 
             switch (node) {
+                case FuncDeclNode fd:
+                    EmitClosureBody(fd);
+                    break;
+                
                 case IfNode ifn:
                     CompileExpression(ifn.Condition);
-                    
+
                     var jumpToElse = EmitJump(Op.JumpIfFalse);
                     CompileExpression(ifn.TrueBranch);
-                    
+
                     var jumpOverElse = EmitJump(Op.Jump);
                     PatchJump(jumpToElse);
-                    
+
                     CompileExpression(ifn.FalseBranch);
                     PatchJump(jumpOverElse);
                     break;
-                
+
                 case NullNode:
                     Emit(Op.Const, chunk.AddConstant(null));
                     break;
@@ -451,6 +455,18 @@ namespace Weft.Language.Compilation {
         }
 
         private void CompileFuncDecl(FuncDeclNode fd) {
+            EmitClosureBody(fd);
+
+            if (current.enclosing == null && current.scopeDepth == 0) {
+                Emit(Op.StoreGlobal, globals[fd.Name]);
+                Emit(Op.Pop);
+            }
+            else {
+                current.locals.Add(new Local { name = fd.Name, depth = current.scopeDepth });
+            }
+        }
+
+        private void EmitClosureBody(FuncDeclNode fd) {
             var skipJump = EmitJump(Op.Jump);
             var funcStart = chunk.code.Count;
 
@@ -467,28 +483,20 @@ namespace Weft.Language.Compilation {
             Emit(Op.Return);
 
             var upvalues = new List<UpvalueEntry>(current.upvalues);
-
             current = current.enclosing;
 
-            chunk.funcNames[funcStart] = fd.Name;
+            chunk.funcNames[funcStart] = fd.Name ?? "<anonymous>";
             PatchJump(skipJump);
 
             EmitRaw((int)Op.Closure);
             EmitRaw(funcStart);
+
             EmitRaw(fd.Parameters.Count);
             EmitRaw(upvalues.Count);
 
             foreach (var up in upvalues) {
                 EmitRaw(up.isLocal ? 1 : 0);
                 EmitRaw(up.index);
-            }
-
-            if (current.enclosing == null && current.scopeDepth == 0) {
-                Emit(Op.StoreGlobal, globals[fd.Name]);
-                Emit(Op.Pop);
-            }
-            else {
-                current.locals.Add(new Local { name = fd.Name, depth = current.scopeDepth });
             }
         }
 
