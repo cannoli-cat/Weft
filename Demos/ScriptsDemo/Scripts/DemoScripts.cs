@@ -50,6 +50,19 @@ print(""High AND passing? "" + (isHigh && isPassing));
 "
             },
             new() {
+                name = "Ternary Operator",
+                code = @"// Ternary expressions: condition ? ifTrue : ifFalse
+var score = 85;
+var grade = score >= 90 ? ""A"" : score >= 80 ? ""B"" : ""C"";
+print(""Score: "" + score + "" → "" + grade);
+
+// Works inline in expressions
+for (var i = 1; i <= 10; i++) {
+    print(i + "" is "" + (i % 2 == 0 ? ""even"" : ""odd""));
+}
+"
+            },
+            new() {
                 name = "While Loop",
                 code = @"// While loop: count to 5
 var i = 1;
@@ -207,6 +220,33 @@ for (var i = 0; i < fruits.length; i++) {
 "
             },
             new() {
+                name = "forEach",
+                code = @"// forEach iterates over arrays with a callback
+var fruits = [""apple"", ""banana"", ""cherry""];
+
+fruits.forEach(function(item) {
+    print(""fruit: "" + item);
+});
+
+// Works with closures that capture variables
+var numbers = [1, 2, 3, 4, 5];
+var sum = 0;
+
+numbers.forEach(function(n) {
+    sum += n;
+});
+
+print(""sum = "" + sum);
+
+// Combine with other features
+var names = [""alice"", ""bob"", ""charlie""];
+
+names.forEach(function(name) {
+    print(name.length > 3 ? name.toUpper() : name);
+});
+"
+            },
+            new() {
                 name = "Functions",
                 code = @"// User-defined functions
 function add(a, b) {
@@ -347,7 +387,38 @@ function outer() {
 
 print(""nested: "" + outer());
 "
-            }
+            },
+            new() {
+                name = "Anonymous Functions",
+                code = @"// Anonymous functions as values
+var double = function(x) {
+    return x * 2;
+};
+
+print(""double(5) = "" + double(5));
+
+// Pass functions as arguments
+function apply(fn, value) {
+    return fn(value);
+}
+
+var square = function(x) { return x * x; };
+print(""apply(square, 4) = "" + apply(square, 4));
+print(""apply(double, 7) = "" + apply(double, 7));
+
+// Return anonymous functions
+function multiplier(factor) {
+    return function(x) {
+        return x * factor;
+    };
+}
+
+var triple = multiplier(3);
+var tenX = multiplier(10);
+print(""triple(4) = "" + triple(4));
+print(""tenX(4) = "" + tenX(4));
+"
+            },
         };
     }
 }

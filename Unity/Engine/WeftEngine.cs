@@ -20,7 +20,7 @@ namespace Weft.Unity.Engine {
         public WeftOptions Options { get; private set; }
         private readonly WeftScheduler scheduler = new();
 
-        private readonly Dictionary<string, CachedScript> scriptCache = new();
+        private readonly Dictionary<int, CachedScript> scriptCache = new();
 
         private struct CachedScript {
             public WeftChunk chunk;
@@ -148,11 +148,12 @@ namespace Weft.Unity.Engine {
         }
 
         private (WeftChunk chunk, string error) CompileOrCache(string source) {
-            if (scriptCache.TryGetValue(source, out var cached)) {
+            var key = source.GetHashCode();
+    
+            if (scriptCache.TryGetValue(key, out var cached)) {
                 if (cached.features == Options.Features)
                     return (cached.chunk, null);
-
-                scriptCache.Remove(source);
+                scriptCache.Remove(key);
             }
 
             var lex = Lexer.Tokenize(source);
@@ -173,12 +174,12 @@ namespace Weft.Unity.Engine {
                 var firstKey = scriptCache.Keys.First();
                 scriptCache.Remove(firstKey);
             }
-
-            scriptCache[source] = new CachedScript {
+    
+            scriptCache[key] = new CachedScript {
                 chunk = chunk,
                 features = Options.Features
             };
-
+    
             return (chunk, null);
         }
 

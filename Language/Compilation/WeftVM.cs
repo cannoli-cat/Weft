@@ -179,12 +179,15 @@ namespace Weft.Language.Compilation {
                         break;
 
                     case Op.Add: {
+                        if (sp < 2) return MakeError("Stack underflow", instrPc);
                         var b = stack[--sp];
                         var a = stack[--sp];
+                        
                         if (a is double da && b is double db)
                             stack[sp++] = da + db;
                         else
                             stack[sp++] = (a?.ToString() ?? "null") + (b?.ToString() ?? "null");
+                        
                         break;
                     }
                     case Op.Sub: {
@@ -254,14 +257,20 @@ namespace Weft.Language.Compilation {
                         break;
                     }
                     case Op.Eq: {
+                        if (sp < 2) return MakeError("Stack underflow", instrPc);
+                        
                         var b = stack[--sp];
                         var a = stack[--sp];
+                        
                         stack[sp++] = Equals(a, b);
                         break;
                     }
                     case Op.Neq: {
+                        if (sp < 2) return MakeError("Stack underflow", instrPc);
+                        
                         var b = stack[--sp];
                         var a = stack[--sp];
+                        
                         stack[sp++] = !Equals(a, b);
                         break;
                     }

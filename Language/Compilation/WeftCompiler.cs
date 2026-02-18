@@ -52,6 +52,11 @@ namespace Weft.Language.Compilation {
                 else if (node is VarNode v)
                     globals[v.Name] = globalCount++;
             }
+            
+            if (globalCount > 256) {
+                SetError($"Too many global variables ({globalCount}). Maximum is 256.");
+                return chunk;
+            }
 
             foreach (var node in program)
                 if (node is FuncDeclNode fd)
