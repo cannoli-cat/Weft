@@ -17,14 +17,9 @@
     ],
     "samples": [
         {
-            "displayName": "Scripts Demo",
-            "description": "Basic Weft scripting examples.",
-            "path": "Samples~/ScriptsDemo"
-        },
-        {
-            "displayName": "Robot Demo",
-            "description": "Robot grid pathfinding demo using Weft.",
-            "path": "Samples~/RobotDemo"
+            "displayName": "Demos",
+            "description": "Script editor and robot grid pathfinding demos for Weft.",
+            "path": "Samples~/Demos"
         }
     ]
 }
