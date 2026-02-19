@@ -426,6 +426,9 @@ namespace Weft.Language.Parsing {
             var node = ParseLogicalOr(result);
             if (result.HasError || !Match(TokenType.Symbol, "?")) return node;
             
+            Require(LanguageFeatures.Conditionals, "Ternary operator requires conditionals", result);
+            if (result.HasError) return null;
+            
             var trueExpr = ParseExpression(result);
             Consume(TokenType.Symbol, ":", result, "Expected ':' in ternary");
             var falseExpr = ParseExpression(result);
