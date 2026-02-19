@@ -14,12 +14,5 @@
         "runtime",
         "language",
         "sandbox"
-    ],
-    "samples": [
-        {
-            "displayName": "Demos",
-            "description": "Script editor and robot grid pathfinding demos for Weft.",
-            "path": "Samples~/Demos"
-        }
     ]
 }
