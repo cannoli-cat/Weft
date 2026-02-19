@@ -2,7 +2,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Weft.Samples.ScriptsDemo.Scripts {
+namespace Weft.Demos.ScriptsDemo.Scripts {
     [RequireComponent(typeof(UIDocument))]
     public class DemoSceneHost : MonoBehaviour {
         private DropdownField dropdown;
@@ -13,15 +13,6 @@ namespace Weft.Samples.ScriptsDemo.Scripts {
             CreateScriptTarget();
 
             var doc = GetComponent<UIDocument>();
-
-            if (doc.panelSettings == null) {
-                var ps = ScriptableObject.CreateInstance<PanelSettings>();
-                ps.themeStyleSheet = Resources.FindObjectsOfTypeAll<ThemeStyleSheet>()[0];
-                ps.scaleMode = PanelScaleMode.ScaleWithScreenSize;
-                ps.referenceResolution = new Vector2Int(1920, 1080);
-                doc.panelSettings = ps;
-            }
-
             var root = doc.rootVisualElement;
             root.schedule.Execute(() => Init(root));
         }

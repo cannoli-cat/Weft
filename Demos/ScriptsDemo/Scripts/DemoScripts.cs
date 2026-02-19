@@ -1,4 +1,4 @@
-namespace Weft.Samples.ScriptsDemo.Scripts {
+namespace Weft.Demos.ScriptsDemo.Scripts {
     public static class DemoScripts {
         public struct Entry {
             public string name;

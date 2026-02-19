@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using Weft.Unity.Engine;
 
-namespace Weft.Samples.RobotDemo.Scripts {
+namespace Weft.Demos.RobotDemo.Scripts {
     /// <summary>
     /// Scene host for the Robot demo.
     /// Sets up the grid, wires the script editor to target the robot GameObject,
@@ -36,15 +36,6 @@ namespace Weft.Samples.RobotDemo.Scripts {
             }
 
             var doc = GetComponent<UIDocument>();
-            
-            if (doc.panelSettings == null) {
-                var ps = ScriptableObject.CreateInstance<PanelSettings>();
-                ps.themeStyleSheet = Resources.FindObjectsOfTypeAll<ThemeStyleSheet>()[0];
-                ps.scaleMode = PanelScaleMode.ScaleWithScreenSize;
-                ps.referenceResolution = new Vector2Int(1920, 1080);
-                doc.panelSettings = ps;
-            }
-            
             var root = doc.rootVisualElement;
             root.schedule.Execute(() => Init(root));
         }

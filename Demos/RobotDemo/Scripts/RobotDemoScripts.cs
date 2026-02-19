@@ -1,4 +1,4 @@
- namespace Weft.Samples.RobotDemo.Scripts {
+ namespace Weft.Demos.RobotDemo.Scripts {
     public static class RobotDemoScripts {
         public struct Entry {
             public string name;
