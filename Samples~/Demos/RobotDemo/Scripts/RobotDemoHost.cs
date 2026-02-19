@@ -36,6 +36,15 @@ namespace Weft.Samples.RobotDemo.Scripts {
             }
 
             var doc = GetComponent<UIDocument>();
+            
+            if (doc.panelSettings == null) {
+                var ps = ScriptableObject.CreateInstance<PanelSettings>();
+                ps.themeStyleSheet = Resources.FindObjectsOfTypeAll<ThemeStyleSheet>()[0];
+                ps.scaleMode = PanelScaleMode.ScaleWithScreenSize;
+                ps.referenceResolution = new Vector2Int(1920, 1080);
+                doc.panelSettings = ps;
+            }
+            
             var root = doc.rootVisualElement;
             root.schedule.Execute(() => Init(root));
         }
