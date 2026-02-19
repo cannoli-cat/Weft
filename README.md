@@ -2,8 +2,7 @@
 
 A lightweight, sandboxed scripting language and bytecode VM for Unity. Let players and designers write game logic at runtime.
 
-<!-- TODO: Replace with an actual GIF/screenshot of the Robot Demo -->
-<!-- ![Weft Robot Demo](docs/robot-demo.gif) -->
+![Weft Robot Demo](docs/robot-demo.gif)
 
 ## Features
 
