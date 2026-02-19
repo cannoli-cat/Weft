@@ -151,7 +151,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
   m_PanelSettings: {fileID: 0}
   m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 9197481963319205126, guid: 7379323f405d07d4e85f041bd9db3aeb, type: 3}
+  sourceAsset: {fileID: 9197481963319205126, guid: 2487debb61bbcbd4180e6d8f80a216f2, type: 3}
   m_SortingOrder: 0
   m_Position: 0
   m_WorldSpaceSizeMode: 1
@@ -184,7 +184,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 124424565}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9abc3b142fccae34d8247d96c7b88d68, type: 3}
+  m_Script: {fileID: 11500000, guid: 56d753c4df6bffc489af242a1229e12e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Weft.Demos.DemoSceneHost
 --- !u!1 &519420028
