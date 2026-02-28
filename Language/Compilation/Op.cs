@@ -33,5 +33,8 @@ namespace Weft.Language.Compilation {
         LoadUpvalue,
         StoreUpvalue,
         CloseUpvalues,
+        
+        Peek,
+        Poke,
     }
 }

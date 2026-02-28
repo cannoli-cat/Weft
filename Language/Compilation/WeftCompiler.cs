@@ -191,44 +191,41 @@ namespace Weft.Language.Compilation {
 
             switch (node) {
                 case ForEachNode fe:
-                    BeginScope();
-                    
                     CompileExpression(fe.Collection);
-                    current.locals.Add(new Local { name = "$arr", depth = current.scopeDepth });
-
                     CompileExpression(fe.Callback);
-                    current.locals.Add(new Local { name = "$fn", depth = current.scopeDepth });
+                    Emit(Op.Const, chunk.AddConstant(0.0)); 
 
-                    Emit(Op.Const, chunk.AddConstant(0.0));
-                    current.locals.Add(new Local { name = "$i", depth = current.scopeDepth });
+                    currentLine = fe.Line;
 
                     var feLoopStart = chunk.code.Count;
 
-                    Emit(Op.LoadLocal, current.locals.Count - 1);
-                    Emit(Op.LoadLocal, current.locals.Count - 3);
+                    Emit(Op.Peek, 0); // peek i
+                    Emit(Op.Peek, 3); // peek arr
                     Emit(Op.Const, chunk.AddConstant("length"));
                     Emit(Op.Call, chunk.AddConstant("__member_get"), 2);
                     Emit(Op.Lt);
                     var feExit = EmitJump(Op.JumpIfFalse);
-
-                    Emit(Op.LoadLocal, current.locals.Count - 3);
-                    Emit(Op.LoadLocal, current.locals.Count - 1);
+                    
+                    Emit(Op.Peek, 2); // peek arr 
+                    Emit(Op.Peek, 1); // peek i   
                     Emit(Op.Call, chunk.AddConstant("__index_get"), 2);
-
-                    Emit(Op.LoadLocal, current.locals.Count - 2);
+                    Emit(Op.Peek, 2);
                     Emit(Op.CallClosure, 1);
                     Emit(Op.Pop);
-
-                    Emit(Op.LoadLocal, current.locals.Count - 1);
+                    
+                    Emit(Op.Peek, 0);
                     Emit(Op.Const, chunk.AddConstant(1.0));
                     Emit(Op.Add);
-                    Emit(Op.StoreLocal, current.locals.Count - 1);
+                    Emit(Op.Poke, 1);
                     Emit(Op.Pop);
 
                     Emit(Op.Jump, feLoopStart);
                     PatchJump(feExit);
-
-                    EndScope();
+                    
+                    Emit(Op.Pop);
+                    Emit(Op.Pop);
+                    Emit(Op.Pop);
+                    
                     Emit(Op.Const, chunk.AddConstant(null));
                     break;
                 
@@ -342,7 +339,21 @@ namespace Weft.Language.Compilation {
                     break;
 
                 case FunctionCallNode call:
-                    CompileCall(call);
+                    foreach (var arg in call.Arguments)
+                        CompileExpression(arg);
+
+                    if (call.Target != null) {
+                        CompileExpression(call.Target);
+                        Emit(Op.CallClosure, call.Arguments.Count);
+                    }
+                    else if (IsKnownVariable(call.FunctionName)) {
+                        ResolveVariable(call.FunctionName, isStore: false);
+                        Emit(Op.CallClosure, call.Arguments.Count);
+                    }
+                    else {
+                        var nameIdx = chunk.AddConstant(call.FunctionName);
+                        Emit(Op.Call, nameIdx, call.Arguments.Count);
+                    }
                     break;
 
                 case ArrayLiteralNode arr:

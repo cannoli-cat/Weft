@@ -389,7 +389,7 @@ namespace Weft.Language.Parsing {
             return new IfNode(node, trueExpr, falseExpr) { Line = node.Line };
         }
 
-        private FunctionCallNode ParseFunctionCall(string functionName, ParseResult result) {
+        /*private FunctionCallNode ParseFunctionCall(string functionName, ParseResult result) {
             var arguments = new List<AstNode>();
             if (!Match(TokenType.Symbol, ")")) {
                 do {
@@ -400,7 +400,7 @@ namespace Weft.Language.Parsing {
             }
 
             return new FunctionCallNode(functionName, arguments) { Line = Previous().Line };
-        }
+        }*/
 
         private AstNode ParseLogicalOr(ParseResult result) {
             var node = ParseLogicalAnd(result);
@@ -504,7 +504,25 @@ namespace Weft.Language.Parsing {
             if (res.HasError || node == null) return null;
 
             while (true) {
-                if (Match(TokenType.Symbol, "[")) {
+                if (Match(TokenType.Symbol, "(")) {
+                    var args = new List<AstNode>();
+                    if (!Match(TokenType.Symbol, ")")) {
+                        do {
+                            args.Add(ParseExpression(res));
+                        } while (Match(TokenType.Symbol, ","));
+
+                        Consume(TokenType.Symbol, ")", res, "Expected ')' after arguments");
+                        if (res.HasError) return null;
+                    }
+
+                    if (node is IdentifierNode id) {
+                        node = new FunctionCallNode(id.Name, args) { Line = node.Line };
+                    } 
+                    else {
+                        node = new FunctionCallNode(node, args) { Line = node.Line };
+                    }
+                }
+                else if (Match(TokenType.Symbol, "[")) {
                     Require(LanguageFeatures.Collections, "Collections not enabled", res);
                     if (res.HasError) return null;
                     
@@ -569,13 +587,7 @@ namespace Weft.Language.Parsing {
                 return new StringNode(Previous().Value) { Line = Previous().Line };
 
             if (Match(TokenType.Identifier)) {
-                var name = Previous().Value;
-                if (Match(TokenType.Symbol, "(")) {
-                    var func = ParseFunctionCall(name, result);
-                    return result.HasError ? null : func;
-                }
-
-                return new IdentifierNode(name) { Line = Previous().Line };
+                return new IdentifierNode(Previous().Value) { Line = Previous().Line };
             }
 
             if (Match(TokenType.Keyword, "true")) return new BoolNode(true) { Line = Previous().Line };

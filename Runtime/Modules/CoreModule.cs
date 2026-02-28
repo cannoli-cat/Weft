@@ -72,16 +72,35 @@ namespace Weft.Runtime.Modules {
                 provider.Add(new WeftConsoleService((m, _) => UnityEngine.Debug.Log(m)));
         }
         
-        private static string FormatValue(object value) => value switch {
-            null => "null",
-            bool b => b ? "true" : "false",
-            double d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            string s => s,
-            List<object> list => "[" + string.Join(", ", list.ConvertAll(FormatValue)) + "]",
-            Dictionary<string, object> dict => "{" + string.Join(", ", 
-                dict.Select(kv => kv.Key + ": " + FormatValue(kv.Value))) + "}",
-            _ => value.ToString()
-        };
+        private static string FormatValue(object value, HashSet<object> visited = null) {
+            if (value == null) return "null";
+            if (value is bool b) return b ? "true" : "false";
+            if (value is double d) return d.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (value is string s) return s;
+
+            visited ??= new HashSet<object>();
+            
+            if (!visited.Add(value)) {
+                return value is List<object> ? "[...]" : "{...}";
+            }
+
+            try {
+                if (value is List<object> list) {
+                    var elements = list.Select(v => FormatValue(v, visited));
+                    return "[" + string.Join(", ", elements) + "]";
+                }
+
+                if (value is Dictionary<string, object> dict) {
+                    var elements = dict.Select(kv => kv.Key + ": " + FormatValue(kv.Value, visited));
+                    return "{" + string.Join(", ", elements) + "}";
+                }
+
+                return value.ToString();
+            } 
+            finally {
+                visited.Remove(value);
+            }
+        }
         
         private static bool IsTruthy(object val) => val switch {
             null => false,

@@ -198,6 +198,30 @@ namespace Weft.Language.Compilation {
                         CloseUpvaluesFrom(frames[frameCount - 1].baseSlot + fromSlot);
                         break;
                     }
+                    
+                    case Op.Peek: {
+                        var offset = code[pc++];
+                        if (!CheckStack(1, instrPc, out var e)) return e;
+                        
+                        var targetSlot = sp - 1 - offset;
+                        
+                        if (targetSlot < frames[frameCount - 1].baseSlot || targetSlot >= sp)
+                            return MakeError("Invalid stack peek", instrPc);
+                        
+                        stack[sp++] = stack[targetSlot];
+                        break;
+                    }
+
+                    case Op.Poke: {
+                        var offset = code[pc++];
+                        var targetSlot = sp - 1 - offset;
+                        
+                        if (targetSlot < frames[frameCount - 1].baseSlot || targetSlot >= sp)
+                            return MakeError("Invalid stack poke", instrPc);
+                        
+                        stack[targetSlot] = stack[sp - 1];
+                        break;
+                    }
 
                     case Op.CallFunc:
                         var startPc = code[pc++];
