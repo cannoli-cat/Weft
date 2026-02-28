@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using Weft.Runtime.Binding;
 using Weft.Runtime.Services;
 using Weft.Unity.Engine;
@@ -12,9 +14,18 @@ namespace Weft.Runtime.Modules {
         public LanguageFeatures ParserFeatures => LanguageFeatures.None;
 
         public void Register(IBindingRegistrar registrar) {
+            registrar.Bind("assert", (_, args) => {
+                var condition = args.Length > 0 && IsTruthy(args[0]);
+                if (!condition) {
+                    var msg = args.Length > 1 ? args[1]?.ToString() ?? "Assertion failed" : "Assertion failed";
+                    throw new System.Exception(msg);
+                }
+                return null;
+            });
+            
             registrar.Bind("print", (ctx, args) => {
                 var console = ctx.Resolve<WeftConsoleService>();
-                console?.Print(args.Length > 0 ? args[0]?.ToString() ?? "null" : "");
+                console?.Print(args.Length > 0 ? FormatValue(args[0]) : "");
                 return null;
             });
 
@@ -36,7 +47,7 @@ namespace Weft.Runtime.Modules {
             
             registrar.Bind("string", (_, args) => {
                 if (args.Length != 1) throw new System.Exception("string() requires exactly one argument.");
-                return args[0]?.ToString() ?? "null";
+                return FormatValue(args[0]);
             });
             
             registrar.Bind("type", (_, args) => {
@@ -46,8 +57,8 @@ namespace Weft.Runtime.Modules {
                     double => "number",
                     string => "string",
                     bool => "bool",
-                    System.Collections.Generic.List<object> => "array",
-                    System.Collections.Generic.Dictionary<string, object> => "object",
+                    List<object> => "array",
+                    Dictionary<string, object> => "object",
                     _ => "unknown"
                 };
             });
@@ -60,5 +71,23 @@ namespace Weft.Runtime.Modules {
             if (!provider.TryGet<WeftConsoleService>(out _))
                 provider.Add(new WeftConsoleService((m, _) => UnityEngine.Debug.Log(m)));
         }
+        
+        private static string FormatValue(object value) => value switch {
+            null => "null",
+            bool b => b ? "true" : "false",
+            double d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            string s => s,
+            List<object> list => "[" + string.Join(", ", list.ConvertAll(FormatValue)) + "]",
+            Dictionary<string, object> dict => "{" + string.Join(", ", 
+                dict.Select(kv => kv.Key + ": " + FormatValue(kv.Value))) + "}",
+            _ => value.ToString()
+        };
+        
+        private static bool IsTruthy(object val) => val switch {
+            null => false,
+            bool b => b,
+            double d => d != 0,
+            _ => true
+        };
     }
 }

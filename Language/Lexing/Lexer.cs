@@ -5,7 +5,7 @@ namespace Weft.Language.Lexing {
     public static class Lexer {
         // set of keywords in the language
         private static readonly HashSet<string> Keywords = new() {
-            "var", "if", "else", "true", "false",
+            "let", "const", "if", "else", "true", "false",
             "do", "while", "for",
             "return", "break",
             "continue", "function",

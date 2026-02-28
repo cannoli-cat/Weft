@@ -7,7 +7,6 @@ using Weft.Runtime.Services;
 namespace Weft.Unity.Engine {
     public class ScriptContext {
         public GameObject GameObject { get; set; }
-        public Transform Transform => GameObject.transform;
         public WeftCapabilities Caps { get; private set; }
         public int Pid { get; set; }
         public int? GasOverride { get; set; }

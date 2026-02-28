@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using UnityEngine;
 using Weft.Language.Compilation;
 using Weft.Language.Lexing;
@@ -104,7 +106,7 @@ namespace Weft.Unity.Engine {
             foreach (var module in Options.Modules)
                 module.Register(registrar);
 
-            foreach (var binding in FindObjectsByType<WeftBindings>(FindObjectsSortMode.None))
+            foreach (var binding in FindObjectsByType<WeftBindings>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 binding.RegisterAttributes(registrar);
 
             ClearScriptCache();
@@ -150,7 +152,7 @@ namespace Weft.Unity.Engine {
         }
 
         private (WeftChunk chunk, string error) CompileOrCache(string source) {
-            var key = source;
+            var key = HashSource(source);
     
             if (scriptCache.TryGetValue(key, out var cached)) {
                 if (cached.features == Options.Features)
@@ -188,6 +190,12 @@ namespace Weft.Unity.Engine {
         public void ClearScriptCache() {
             scriptCache.Clear();
             Debug.Log("[Weft] Script cache cleared");
+        }
+        
+        private static string HashSource(string source) {
+            using var sha = SHA256.Create();
+            var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(source));
+            return System.Convert.ToBase64String(bytes);
         }
     }
 }

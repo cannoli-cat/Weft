@@ -6,7 +6,7 @@ A lightweight, sandboxed scripting language and bytecode VM for Unity. Let playe
 
 ## Features
 
-- **JavaScript-like syntax**: Familiar `var`, `if/else`, `for`, `while`, functions, closures, arrays, and objects
+- **JavaScript-like syntax**: Familiar `let`, `const`, `if/else`, `for`, `while`, functions, closures, arrays, and objects
 - **Bytecode compiler + stack-based VM**: Scripts are compiled to bytecode and executed on a register-free stack machine, not interpreted from an AST
 - **Gas-limited execution**: Every script runs on a fuel budget per frame, preventing infinite loops from freezing your game
 - **Cooperative multitasking**: `sleep()`, `spawn()`, and `await_pid()` let scripts yield, run concurrently, and wait on each other
@@ -38,8 +38,8 @@ Create an empty GameObject and add the `WeftEngine` component. Assign a `WeftOpt
 // Run a script on a target GameObject
 WeftEngine.Run(@"
     print(""Hello from Weft!"");
-    var x = 10;
-    for (var i = 0; i < x; i++) {
+    const x = 10;
+    for (let i = 0; i < x; i++) {
         print(i);
     }
 ", targetGameObject);

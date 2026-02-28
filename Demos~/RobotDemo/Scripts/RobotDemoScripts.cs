@@ -1,4 +1,4 @@
- namespace Weft.Demos.RobotDemo.Scripts {
+namespace Weft.Demos.RobotDemo.Scripts {
     public static class RobotDemoScripts {
         public struct Entry {
             public string name;
@@ -24,8 +24,8 @@ print(""Facing: "" + facing());
             new() {
                 name = "Scan & React",
                 code = @"// Check what's ahead before moving
-for (var i = 0; i < 6; i++) {
-    var ahead = scan();
+for (let i = 0; i < 6; i++) {
+    const ahead = scan();
     print(""Ahead: "" + ahead);
 
     if (ahead == ""wall"") {
@@ -42,14 +42,14 @@ print(""Done. Position: "" + posX() + "", "" + posY());
                 name = "Gem Collector",
                 code = @"// Simple gem-hunting loop
 // Walk forward, grab gems, turn when blocked
-var steps = 0;
+let steps = 0;
 while (!won() && steps < 60) {
     // grab anything at our feet
     if (collect()) {
         print(""Got a gem! ("" + gems() + "" total)"");
     }
 
-    var ahead = scan();
+    const ahead = scan();
     if (ahead == ""gem"" || ahead == ""empty"") {
         move();
     } else {
@@ -77,8 +77,8 @@ if (won()) {
             new() {
                 name = "Wall Follower",
                 code = @"// Classic left-hand wall following algorithm
-var steps = 0;
-var maxSteps = 100;
+let steps = 0;
+const maxSteps = 100;
 
 while (!won() && steps < maxSteps) {
     collect();
@@ -112,7 +112,7 @@ if (won()) {
             new() {
                 name = "DFS Explorer",
                 code = @"// Depth-first search, guaranteed to find every gem
-var visited = {};
+const visited = {};
 
 function faceDir(dir) {
     while (facing() != dir) {
@@ -128,15 +128,15 @@ function opposite(dir) {
 }
 
 function dfs() {
-    var key = posX() + "","" + posY();
+    const key = posX() + "","" + posY();
     if (visited[key]) return;
     if (won()) return;
     visited[key] = true;
     collect();
 
-    var dirs = [""north"", ""east"", ""south"", ""west""];
+    const dirs = [""north"", ""east"", ""south"", ""west""];
 
-    for (var i = 0; i < 4; i++) {
+    for (let i = 0; i < 4; i++) {
         if (won()) return;
         faceDir(dirs[i]);
         if (scan() == ""gem"") {
@@ -146,7 +146,7 @@ function dfs() {
             move();
         }
     }
-    for (var i = 0; i < 4; i++) {
+    for (let i = 0; i < 4; i++) {
         if (won()) return;
         faceDir(dirs[i]);
         if (scan() == ""empty"") {

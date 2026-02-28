@@ -71,7 +71,8 @@ namespace Weft.Language.Parsing {
 
                     return result.HasError ? null : new ReturnNode(retVal) { Line = token.Line };
 
-                case TokenType.Keyword when token.Value == "var":
+                case TokenType.Keyword when token.Value == "let":
+                case TokenType.Keyword when token.Value == "const":
                     return ParseVarDeclaration(result);
 
                 case TokenType.Keyword when token.Value == "if":
@@ -110,7 +111,15 @@ namespace Weft.Language.Parsing {
 
                 case TokenType.Identifier:
                     return ParseIdentifierStatement(result);
+                
+                case TokenType.Symbol when token.Value == "{":
+                    Advance();
+                    var stmts = ParseBlock(result);
+                    return result.HasError ? null : new BlockNode(stmts) { Line = token.Line };
 
+                case TokenType.Symbol when token.Value == "[":
+                    return ParseIdentifierStatement(result);
+                
                 default:
                     SetError(result, $"Unexpected token: {token.Value}");
                     return null;
@@ -187,7 +196,9 @@ namespace Weft.Language.Parsing {
         }
 
         private AstNode ParseVarDeclaration(ParseResult result) {
-            Advance(); // skip 'var'
+            var isConst = Peek().Value == "const";
+            Advance(); // skip 'let' or 'const'
+            
             var nameToken = Consume(TokenType.Identifier, result, "Expected variable name");
             if (result.HasError) return null;
 
@@ -198,7 +209,7 @@ namespace Weft.Language.Parsing {
             if (result.HasError) return null;
 
             Consume(TokenType.Symbol, ";", result, "Expected ';' after variable declaration");
-            return result.HasError ? null : new VarNode(nameToken.Value, expr) { Line = nameToken.Line };
+            return result.HasError ? null : new VarNode(nameToken.Value, expr, isConst) { Line = nameToken.Line };
         }
 
         private AstNode ParseIfStatement(ParseResult res, bool alreadyConsumedIf = false) {
@@ -496,10 +507,13 @@ namespace Weft.Language.Parsing {
                 if (Match(TokenType.Symbol, "[")) {
                     Require(LanguageFeatures.Collections, "Collections not enabled", res);
                     if (res.HasError) return null;
+                    
                     var index = ParseExpression(res);
                     if (res.HasError) return null;
+                    
                     Consume(TokenType.Symbol, "]", res, "Expected ']'");
                     if (res.HasError) return null;
+                    
                     node = new IndexAccessNode(node, index) { Line = node.Line };
                 }
                 else if (Match(TokenType.Symbol, ".")) {
@@ -516,8 +530,17 @@ namespace Weft.Language.Parsing {
                             Consume(TokenType.Symbol, ")", res, "Expected ')'");
                         }
 
-                        args.Insert(0, node);
-                        node = new FunctionCallNode($"__{member.Value}", args) { Line = node.Line };
+                        if (member.Value == "forEach") {
+                            if (args.Count != 1) {
+                                SetError(res, "forEach requires exactly one callback argument");
+                                return null;
+                            }
+                            node = new ForEachNode(node, args[0]) { Line = node.Line };
+                        } 
+                        else {
+                            args.Insert(0, node);
+                            node = new FunctionCallNode($"__{member.Value}", args) { Line = node.Line };
+                        }
                     }
                     else {
                         node = new MemberAccessNode(node, member.Value) { Line = node.Line };

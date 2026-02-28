@@ -11,11 +11,13 @@ namespace Weft.Language.Compilation {
 
         private Stack<LoopContext> loopStack = new();
         private readonly Dictionary<string, int> globals = new();
+        private readonly HashSet<string> constGlobals = new();
 
         private struct Local {
             public string name;
             public int depth;
             public bool isCaptured;
+            public bool isConst;
         }
 
         private struct UpvalueEntry {
@@ -44,6 +46,7 @@ namespace Weft.Language.Compilation {
         public WeftChunk Compile(List<AstNode> program) {
             chunk = new WeftChunk();
             globals.Clear();
+            constGlobals.Clear();
             globalCount = 0;
             loopStack.Clear();
             current = new FuncScope();
@@ -110,17 +113,18 @@ namespace Weft.Language.Compilation {
                             slot = globalCount++;
                             globals[v.Name] = slot;
                         }
+                        if (v.IsConst) constGlobals.Add(v.Name);
 
                         Emit(Op.StoreGlobal, slot);
                         Emit(Op.Pop);
                     }
                     else {
-                        current.locals.Add(new Local { name = v.Name, depth = current.scopeDepth });
+                        current.locals.Add(new Local { name = v.Name, depth = current.scopeDepth, isConst = v.IsConst });
                     }
-
-                    break;
+                    break;;
 
                 case AssignmentNode a:
+                    CheckNotConst(a.Name);
                     CompileExpression(a.Value);
                     ResolveVariable(a.Name, isStore: true);
                     Emit(Op.Pop);
@@ -186,8 +190,51 @@ namespace Weft.Language.Compilation {
             currentLine = node.Line;
 
             switch (node) {
+                case ForEachNode fe:
+                    BeginScope();
+                    
+                    CompileExpression(fe.Collection);
+                    current.locals.Add(new Local { name = "$arr", depth = current.scopeDepth });
+
+                    CompileExpression(fe.Callback);
+                    current.locals.Add(new Local { name = "$fn", depth = current.scopeDepth });
+
+                    Emit(Op.Const, chunk.AddConstant(0.0));
+                    current.locals.Add(new Local { name = "$i", depth = current.scopeDepth });
+
+                    var feLoopStart = chunk.code.Count;
+
+                    Emit(Op.LoadLocal, current.locals.Count - 1);
+                    Emit(Op.LoadLocal, current.locals.Count - 3);
+                    Emit(Op.Const, chunk.AddConstant("length"));
+                    Emit(Op.Call, chunk.AddConstant("__member_get"), 2);
+                    Emit(Op.Lt);
+                    var feExit = EmitJump(Op.JumpIfFalse);
+
+                    Emit(Op.LoadLocal, current.locals.Count - 3);
+                    Emit(Op.LoadLocal, current.locals.Count - 1);
+                    Emit(Op.Call, chunk.AddConstant("__index_get"), 2);
+
+                    Emit(Op.LoadLocal, current.locals.Count - 2);
+                    Emit(Op.CallClosure, 1);
+                    Emit(Op.Pop);
+
+                    Emit(Op.LoadLocal, current.locals.Count - 1);
+                    Emit(Op.Const, chunk.AddConstant(1.0));
+                    Emit(Op.Add);
+                    Emit(Op.StoreLocal, current.locals.Count - 1);
+                    Emit(Op.Pop);
+
+                    Emit(Op.Jump, feLoopStart);
+                    PatchJump(feExit);
+
+                    EndScope();
+                    Emit(Op.Const, chunk.AddConstant(null));
+                    break;
+                
                 case AugAssignNode aug:
                     if (aug.Target is IdentifierNode idn) {
+                        CheckNotConst(idn.Name);
                         ResolveVariable(idn.Name, isStore: false);
                         
                         CompileExpression(aug.Value);
@@ -295,53 +342,7 @@ namespace Weft.Language.Compilation {
                     break;
 
                 case FunctionCallNode call:
-                    if (call.FunctionName == "__forEach") {
-                        BeginScope();
-    
-                        CompileExpression(call.Arguments[0]);
-                        current.locals.Add(new Local { name = "$arr", depth = current.scopeDepth });
-    
-                        CompileExpression(call.Arguments[1]);
-                        current.locals.Add(new Local { name = "$fn", depth = current.scopeDepth });
-    
-                        Emit(Op.Const, chunk.AddConstant(0.0));
-                        current.locals.Add(new Local { name = "$i", depth = current.scopeDepth });
-    
-                        var loopStart = chunk.code.Count;
-
-                        Emit(Op.LoadLocal, current.locals.Count - 1);
-
-                        Emit(Op.LoadLocal, current.locals.Count - 3);
-                        Emit(Op.Const, chunk.AddConstant("length"));
-                        Emit(Op.Call, chunk.AddConstant("__member_get"), 2);
-
-                        Emit(Op.Lt);
-                        var exitJump = EmitJump(Op.JumpIfFalse);
-
-                        Emit(Op.LoadLocal, current.locals.Count - 3);
-                        Emit(Op.LoadLocal, current.locals.Count - 1);
-                        Emit(Op.Call, chunk.AddConstant("__index_get"), 2);
-    
-                        Emit(Op.LoadLocal, current.locals.Count - 2);
-                        Emit(Op.CallClosure, 1);
-    
-                        Emit(Op.Pop);
-    
-                        Emit(Op.LoadLocal, current.locals.Count - 1);
-                        Emit(Op.Const, chunk.AddConstant(1.0));
-                        Emit(Op.Add);
-                        Emit(Op.StoreLocal, current.locals.Count - 1);
-                        Emit(Op.Pop);
-
-                        Emit(Op.Jump, loopStart);
-                        PatchJump(exitJump);
-    
-                        EndScope();
-
-                        Emit(Op.Const, chunk.AddConstant(null));
-                    }
-                    else CompileCall(call);
-                    
+                    CompileCall(call);
                     break;
 
                 case ArrayLiteralNode arr:
@@ -410,6 +411,8 @@ namespace Weft.Language.Compilation {
 
         private void CompileIncDec(IncDecNode inc) {
             if (inc.Target is IdentifierNode id) {
+                CheckNotConst(id.Name);
+                
                 if (inc.IsPrefix) {
                     ResolveVariable(id.Name, isStore: false);
                     
@@ -420,7 +423,7 @@ namespace Weft.Language.Compilation {
                 }
                 else {
                     ResolveVariable(id.Name, isStore: false);
-                    ResolveVariable(id.Name, isStore: false);
+                    Emit(Op.Dup);
                     
                     Emit(Op.Const, chunk.AddConstant(1.0));
                     Emit(inc.IsIncrement ? Op.Add : Op.Sub);
@@ -441,10 +444,6 @@ namespace Weft.Language.Compilation {
                     Emit(inc.IsIncrement ? Op.Add : Op.Sub);
                     
                     Emit(Op.Dup);
-                    Emit(Op.InsertUnder, 3);
-                    
-                    Emit(Op.Call, chunk.AddConstant("__index_set"), 3);
-                    Emit(Op.Pop);
                 }
                 else {
                     Emit(Op.Dup);
@@ -452,11 +451,11 @@ namespace Weft.Language.Compilation {
                     Emit(inc.IsIncrement ? Op.Add : Op.Sub);
                     
                     Emit(Op.InsertUnder, 1);
-                    Emit(Op.InsertUnder, 3);
-                    
-                    Emit(Op.Call, chunk.AddConstant("__index_set"), 3);
-                    Emit(Op.Pop);
                 }
+
+                Emit(Op.InsertUnder, 3);
+                Emit(Op.Call, chunk.AddConstant("__index_set"), 3);
+                Emit(Op.Pop);
             }
             else if (inc.Target is MemberAccessNode mem) {
                 CompileExpression(mem.Target);
@@ -470,10 +469,6 @@ namespace Weft.Language.Compilation {
                     Emit(inc.IsIncrement ? Op.Add : Op.Sub);
         
                     Emit(Op.Dup);
-                    Emit(Op.InsertUnder, 3);
-        
-                    Emit(Op.Call, chunk.AddConstant("__member_set"), 3);
-                    Emit(Op.Pop);
                 }
                 else {
                     Emit(Op.Dup);
@@ -481,11 +476,11 @@ namespace Weft.Language.Compilation {
                     Emit(inc.IsIncrement ? Op.Add : Op.Sub);
         
                     Emit(Op.InsertUnder, 1);
-                    Emit(Op.InsertUnder, 3);
-        
-                    Emit(Op.Call, chunk.AddConstant("__member_set"), 3);
-                    Emit(Op.Pop);
                 }
+
+                Emit(Op.InsertUnder, 3);
+                Emit(Op.Call, chunk.AddConstant("__member_set"), 3);
+                Emit(Op.Pop);
             }
             else {
                 SetError("Invalid target for increment/decrement operator.");
@@ -809,8 +804,19 @@ namespace Weft.Language.Compilation {
         }
 
         private void SetError(string msg) {
-            if (Error == null)
-                Error = new WeftError(ErrorPhase.Compile, msg, currentLine);
+            Error ??= new WeftError(ErrorPhase.Compile, msg, currentLine);
+        }
+        
+        private void CheckNotConst(string name) {
+            for (var i = current.locals.Count - 1; i >= 0; i--) {
+                if (current.locals[i].name == name) {
+                    if (current.locals[i].isConst)
+                        SetError($"Cannot reassign constant '{name}'");
+                    return;
+                }
+            }
+            if (constGlobals.Contains(name))
+                SetError($"Cannot reassign constant '{name}'");
         }
         
         private void EmitLoopExit(LoopContext ctx) {

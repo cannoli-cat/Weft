@@ -72,7 +72,7 @@ namespace Weft.Language.Compilation {
                         if (offset > 0) {
                             var top = stack[sp - 1];
  
-                            for (int i = 1; i <= offset; i++) {
+                            for (var i = 1; i <= offset; i++) {
                                 stack[sp - i] = stack[sp - i - 1];
                             }
 
@@ -83,9 +83,12 @@ namespace Weft.Language.Compilation {
                     
                     case Op.Dup2: {
                         if (sp < 2) return MakeError("Stack underflow on dup2", instrPc);
+                        if (!CheckStack(2, instrPc, out var e)) return e;
+                        
                         stack[sp] = stack[sp - 2];
                         stack[sp + 1] = stack[sp - 1];
                         sp += 2;
+                        
                         break;
                     }
                     
@@ -100,6 +103,8 @@ namespace Weft.Language.Compilation {
                         var funcPc = code[pc++];
                         var arity = code[pc++];
                         var upCount = code[pc++];
+                        if (!CheckStack(1, instrPc, out var e)) return e;
+                        
                         var ups = new UpvalueCell[upCount];
 
                         for (var i = 0; i < upCount; i++) {
@@ -132,6 +137,8 @@ namespace Weft.Language.Compilation {
 
                         var expectedArity = closure.arity;
                         var baseSlot = sp - argc;
+                        
+                        if (!CheckStack(expectedArity - argc, instrPc, out var e)) return e;
 
                         while (argc < expectedArity) {
                             stack[sp++] = null;
@@ -142,6 +149,9 @@ namespace Weft.Language.Compilation {
                             sp--;
                             argc--;
                         }
+                        
+                        if (frameCount >= frames.Length)
+                            return MakeError("Stack overflow: too many nested calls", instrPc);
 
                         frames[frameCount++] = new CallFrame {
                             returnPc = pc,
@@ -444,6 +454,7 @@ namespace Weft.Language.Compilation {
                                 }
                             }
 
+                            if (!CheckStack(1, instrPc, out var stackErr)) return stackErr;
                             stack[sp++] = ret;
                         }
                         catch (Exception ex) {
@@ -554,6 +565,17 @@ namespace Weft.Language.Compilation {
 
                 openUpvalues.RemoveAt(i);
             }
+        }
+        
+        private bool CheckStack(int needed, int instrPc, out ExecutionResult err) {
+            if (sp + needed <= MaxStack) {
+                err = default; 
+                return true;
+            }
+            
+            err = MakeError("Stack overflow", instrPc);
+            
+            return false;
         }
 
         private static bool IsTruthy(object val) {
