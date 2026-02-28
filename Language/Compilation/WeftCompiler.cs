@@ -37,6 +37,7 @@ namespace Weft.Language.Compilation {
         private struct LoopContext {
             public int continueTarget;
             public List<int> breakJumps;
+            public int scopeDepth;
         }
 
         public WeftChunk Compile(List<AstNode> program) {
@@ -563,6 +564,7 @@ namespace Weft.Language.Compilation {
             }
 
             var ctx = loopStack.Peek();
+            EmitLoopExit(ctx);
             var breakJump = EmitJump(Op.Jump);
             ctx.breakJumps.Add(breakJump);
         }
@@ -574,6 +576,7 @@ namespace Weft.Language.Compilation {
             }
 
             var ctx = loopStack.Peek();
+            EmitLoopExit(ctx);
             Emit(Op.Jump, ctx.continueTarget);
         }
 
@@ -649,7 +652,8 @@ namespace Weft.Language.Compilation {
         private LoopContext PushLoop(int continueTarget) {
             var ctx = new LoopContext {
                 continueTarget = continueTarget,
-                breakJumps = new List<int>()
+                breakJumps = new List<int>(),
+                scopeDepth = current.scopeDepth
             };
             loopStack.Push(ctx);
             return ctx;
@@ -715,6 +719,23 @@ namespace Weft.Language.Compilation {
         private void SetError(string msg) {
             if (Error == null)
                 Error = new WeftError(ErrorPhase.Compile, msg, currentLine);
+        }
+        
+        private void EmitLoopExit(LoopContext ctx) {
+            var hasCaptured = false;
+            var toPop = 0;
+
+            for (var i = current.locals.Count - 1; i >= 0; i--) {
+                if (current.locals[i].depth <= ctx.scopeDepth) break;
+                if (current.locals[i].isCaptured) hasCaptured = true;
+                toPop++;
+            }
+
+            if (hasCaptured)
+                Emit(Op.CloseUpvalues, current.locals.Count - toPop);
+
+            for (var i = 0; i < toPop; i++)
+                Emit(Op.Pop);
         }
 
         private void EmitRaw(int value) {

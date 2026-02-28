@@ -126,7 +126,9 @@ namespace Weft.Unity.Engine {
         public int Spawn(WeftChunk chunk, ScriptContext ctx) {
             ctx = PrepareContext(ctx);
 
-            var proc = new WeftBytecodeProcess(chunk, ctx, Options.WeftLimits.GasPerStep);
+            var gas = ctx.GasOverride ?? Options.WeftLimits.GasPerStep;
+            var proc = new WeftBytecodeProcess(chunk, ctx, gas);
+            
             return scheduler.Spawn(proc);
         }
 

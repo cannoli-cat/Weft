@@ -10,6 +10,7 @@ namespace Weft.Unity.Engine {
         public Transform Transform => GameObject.transform;
         public WeftCapabilities Caps { get; private set; }
         public int Pid { get; set; }
+        public int? GasOverride { get; set; }
         public WeftServiceProvider Services { get; set; }
 
         private readonly Dictionary<Type, object> serviceCache = new();
