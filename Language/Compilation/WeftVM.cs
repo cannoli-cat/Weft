@@ -67,6 +67,28 @@ namespace Weft.Language.Compilation {
                 var op = (Op)code[pc++];
 
                 switch (op) {
+                    case Op.InsertUnder: {
+                        var offset = code[pc++];
+                        if (offset > 0) {
+                            var top = stack[sp - 1];
+ 
+                            for (int i = 1; i <= offset; i++) {
+                                stack[sp - i] = stack[sp - i - 1];
+                            }
+
+                            stack[sp - offset - 1] = top;
+                        }
+                        break;
+                    }
+                    
+                    case Op.Dup2: {
+                        if (sp < 2) return MakeError("Stack underflow on dup2", instrPc);
+                        stack[sp] = stack[sp - 2];
+                        stack[sp + 1] = stack[sp - 1];
+                        sp += 2;
+                        break;
+                    }
+                    
                     case Op.Dup: {
                         if (sp < 1) return MakeError("Stack underflow on dup", instrPc);
                         stack[sp] = stack[sp - 1];
@@ -163,7 +185,7 @@ namespace Weft.Language.Compilation {
 
                     case Op.CloseUpvalues: {
                         var fromSlot = code[pc++];
-                        CloseUpvaluesFrom(fromSlot);
+                        CloseUpvaluesFrom(frames[frameCount - 1].baseSlot + fromSlot);
                         break;
                     }
 

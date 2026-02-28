@@ -110,6 +110,17 @@ namespace Weft.Runtime.Modules {
                 
                 throw new System.Exception($"Cannot access member '{memberName}' on {args[0]?.GetType().Name ?? "null"}.");
             });
+
+            registrar.Bind("__member_set", (_, args) => {
+                var memberName = args[1]?.ToString() ?? string.Empty;
+
+                if (args[0] is Dictionary<string, object> dict) {
+                    dict[memberName] = args[2];
+                    return null;
+                }
+
+                throw new System.Exception($"Cannot set member '{memberName}' on {args[0]?.GetType().Name ?? "null"}.");
+            });
             
             registrar.Bind("__object_new", (_, args) => {
                 var dict = new Dictionary<string, object>();

@@ -1,6 +1,6 @@
 {
     "name": "com.cannolicat.weft",
-    "version": "0.1.3",
+    "version": "0.2.0",
     "displayName": "Weft",
     "description": "A lightweight JavaScript-like scripting language and runtime for Unity.",
     "unity": "6000.0",

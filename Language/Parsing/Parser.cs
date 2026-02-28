@@ -46,13 +46,12 @@ namespace Weft.Language.Parsing {
             // prefix ++ / --
             if (Match(TokenType.Operator, "++") || Match(TokenType.Operator, "--")) {
                 var op = Previous().Value;
-
-                var idTok = Consume(TokenType.Identifier, result, $"Expected identifier after '{op}'");
-                if (result.HasError) return null;
-
+                var target = ParsePostfix(result);
+    
+                if (result.HasError || target == null) return null;
                 Consume(TokenType.Symbol, ";", result, "Expected ';' after increment/decrement");
-                return new ExprStmtNode(new IncDecNode(idTok.Value, isIncrement: op == "++", isPrefix: true)
-                    { Line = token.Line });
+
+                return new ExprStmtNode(new IncDecNode(target, isIncrement: op == "++", isPrefix: true) { Line = token.Line });
             }
 
             switch (token.Type) {
@@ -134,6 +133,9 @@ namespace Weft.Language.Parsing {
                 else if (expr is IndexAccessNode idx) {
                     return new IndexAssignNode(idx.Target, idx.Index, value) { Line = idx.Line };
                 }
+                else if (expr is MemberAccessNode mem) {
+                    return new MemberAssignNode(mem.Target, mem.Member, value) { Line = mem.Line };
+                }
 
                 SetError(result, "Invalid assignment target.");
                 return null;
@@ -142,25 +144,16 @@ namespace Weft.Language.Parsing {
             if (Match(TokenType.Operator, "+=") || Match(TokenType.Operator, "-=") ||
                 Match(TokenType.Operator, "*=") || Match(TokenType.Operator, "/=") ||
                 Match(TokenType.Operator, "%=")) {
-        
+
                 Require(LanguageFeatures.AugAssign, "Augmented assignment disabled", result);
                 if (result.HasError) return null;
 
                 var op = Previous().Value[0].ToString();
                 var rhs = ParseExpression(result);
                 if (result.HasError) return null;
-        
+
                 Consume(TokenType.Symbol, ";", result, "Expected ';' after assignment");
-
-                if (expr is IdentifierNode id) {
-                    return new AssignmentNode(id.Name, new BinaryOperationNode(id, op, rhs)) { Line = id.Line };
-                } 
-                else if (expr is IndexAccessNode idx) {
-                    return new IndexAssignNode(idx.Target, idx.Index, new BinaryOperationNode(expr, op, rhs)) { Line = idx.Line };
-                }
-
-                SetError(result, "Invalid augmented assignment target.");
-                return null;
+                return new ExprStmtNode(new AugAssignNode(expr, op, rhs) { Line = expr.Line });
             }
             
             Consume(TokenType.Symbol, ";", result, "Expected ';'");
@@ -303,45 +296,46 @@ namespace Weft.Language.Parsing {
         }
         
         private AstNode ParseForStep(ParseResult res) {
-            // prefix ++ / --
             if (Match(TokenType.Operator, "++") || Match(TokenType.Operator, "--")) {
                 var op = Previous().Value;
-                var idTok = Consume(TokenType.Identifier, res, $"Expected identifier after '{op}'");
-                return res.HasError
-                    ? null
-                    : new ExprStmtNode(new IncDecNode(idTok.Value, isIncrement: op == "++", isPrefix: true))
-                        { Line = idTok.Line };
+                var target = ParsePostfix(res);
+                if (res.HasError || target == null) return null;
+                return new ExprStmtNode(new IncDecNode(target, isIncrement: op == "++", isPrefix: true)) { Line = target.Line };
             }
 
-            var tok = Consume(TokenType.Identifier, res, "Expected identifier in for-step");
-            if (res.HasError) return null;
-            var name = tok.Value;
+            var expr = ParsePostfix(res);
+            if (res.HasError || expr == null) return null;
 
-            // postfix ++ / --
             if (Match(TokenType.Operator, "++"))
-                return new ExprStmtNode(new IncDecNode(name, true, false)) { Line = tok.Line };
+                return new ExprStmtNode(new IncDecNode(expr, true, false)) { Line = expr.Line };
             if (Match(TokenType.Operator, "--"))
-                return new ExprStmtNode(new IncDecNode(name, false, false)) { Line = tok.Line };
+                return new ExprStmtNode(new IncDecNode(expr, false, false)) { Line = expr.Line };
 
-            // augmented assignment
             if (Match(TokenType.Operator, "+=") || Match(TokenType.Operator, "-=") ||
                 Match(TokenType.Operator, "*=") || Match(TokenType.Operator, "/=") ||
                 Match(TokenType.Operator, "%=")) {
                 var op = Previous().Value[0].ToString();
                 var rhs = ParseExpression(res);
                 if (res.HasError) return null;
-                return new AssignmentNode(name, new BinaryOperationNode(new IdentifierNode(name), op, rhs))
-                    { Line = tok.Line };
+                return new ExprStmtNode(new AugAssignNode(expr, op, rhs) { Line = expr.Line });
             }
 
-            // simple assignment
             if (Match(TokenType.Operator, "=")) {
                 var rhs = ParseExpression(res);
                 if (res.HasError) return null;
-                return new AssignmentNode(name, rhs) { Line = tok.Line };
+
+                if (expr is IdentifierNode id)
+                    return new AssignmentNode(id.Name, rhs) { Line = expr.Line };
+                else if (expr is IndexAccessNode idx)
+                    return new IndexAssignNode(idx.Target, idx.Index, rhs) { Line = expr.Line };
+                else if (expr is MemberAccessNode mem)
+                    return new MemberAssignNode(mem.Target, mem.Member, rhs) { Line = expr.Line };
+        
+                SetError(res, "Invalid assignment target in for-step.");
+                return null;
             }
 
-            SetError(res, $"Unexpected for-step token after '{name}'");
+            SetError(res, "Invalid expression in for-step.");
             return null;
         }
 
@@ -478,10 +472,8 @@ namespace Weft.Language.Parsing {
 
             if (Match(TokenType.Operator, "++") || Match(TokenType.Operator, "--")) {
                 var op = Previous().Value;
-                var idTok = Consume(TokenType.Identifier, res, $"Expected identifier after '{op}'");
-                return res.HasError
-                    ? null
-                    : new IncDecNode(idTok.Value, isIncrement: op == "++", isPrefix: true) { Line = idTok.Line };
+                var target = ParsePostfix(res);
+                return res.HasError || target == null ? null : new IncDecNode(target, isIncrement: op == "++", isPrefix: true) { Line = target.Line };
             }
 
             if (Match(TokenType.Operator, "!")) {
@@ -537,11 +529,12 @@ namespace Weft.Language.Parsing {
                         node = new MemberAccessNode(node, member.Value) { Line = node.Line };
                     }
                 }
-                else if (node is IdentifierNode id) {
-                    if (Match(TokenType.Operator, "++"))
-                        return new IncDecNode(id.Name, true, false) { Line = node.Line };
-                    if (Match(TokenType.Operator, "--"))
-                        return new IncDecNode(id.Name, false, false) { Line = node.Line };
+                else if (Match(TokenType.Operator, "++")) {
+                    node = new IncDecNode(node, true, false) { Line = node.Line };
+                    break;
+                }
+                else if (Match(TokenType.Operator, "--")) {
+                    node = new IncDecNode(node, false, false) { Line = node.Line };
                     break;
                 }
                 else break;

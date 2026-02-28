@@ -3,6 +3,8 @@ namespace Weft.Language.Compilation {
         Const,
         Pop,
         Dup,
+        Dup2,
+        InsertUnder,
         
         LoadLocal,
         StoreLocal,

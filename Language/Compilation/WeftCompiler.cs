@@ -49,10 +49,14 @@ namespace Weft.Language.Compilation {
             current = new FuncScope();
 
             foreach (var node in program) {
-                if (node is FuncDeclNode fd)
-                    globals[fd.Name] = globalCount++;
-                else if (node is VarNode v)
-                    globals[v.Name] = globalCount++;
+                if (node is FuncDeclNode fd) {
+                    if (!globals.ContainsKey(fd.Name))
+                        globals[fd.Name] = globalCount++;
+                }
+                else if (node is VarNode v) {
+                    if (!globals.ContainsKey(v.Name))
+                        globals[v.Name] = globalCount++;
+                }
             }
             
             if (globalCount > 256) {
@@ -76,6 +80,17 @@ namespace Weft.Language.Compilation {
             currentLine = node.Line;
 
             switch (node) {
+                case MemberAssignNode memAssign:
+                    CompileExpression(memAssign.Target);
+                    Emit(Op.Const, chunk.AddConstant(memAssign.Member));
+                    CompileExpression(memAssign.Value);
+
+                    var setMem = chunk.AddConstant("__member_set");
+
+                    Emit(Op.Call, setMem, 3);
+                    Emit(Op.Pop);
+                    break;
+                
                 case FuncDeclNode fd:
                     CompileFuncDecl(fd);
                     break;
@@ -171,6 +186,42 @@ namespace Weft.Language.Compilation {
             currentLine = node.Line;
 
             switch (node) {
+                case AugAssignNode aug:
+                    if (aug.Target is IdentifierNode idn) {
+                        ResolveVariable(idn.Name, isStore: false);
+                        
+                        CompileExpression(aug.Value);
+                        EmitBinaryOp(aug.Operator);
+                        
+                        ResolveVariable(idn.Name, isStore: true);
+                    }
+                    else if (aug.Target is IndexAccessNode idxn) {
+                        CompileExpression(idxn.Target);
+                        CompileExpression(idxn.Index);
+
+                        Emit(Op.Dup2); 
+                        Emit(Op.Call, chunk.AddConstant("__index_get"), 2);
+        
+                        CompileExpression(aug.Value);
+
+                        EmitBinaryOp(aug.Operator); 
+                        Emit(Op.Call, chunk.AddConstant("__index_set"), 3);
+                    }
+                    else if (aug.Target is MemberAccessNode memn) {
+                        CompileExpression(memn.Target);
+                        Emit(Op.Const, chunk.AddConstant(memn.Member));
+
+                        Emit(Op.Dup2);
+                        Emit(Op.Call, chunk.AddConstant("__member_get"), 2);
+
+                        CompileExpression(aug.Value);
+
+                        EmitBinaryOp(aug.Operator);
+                        Emit(Op.Call, chunk.AddConstant("__member_set"), 3);
+                    }
+                    else SetError("Invalid assignment target.");
+                    break;
+                
                 case FuncDeclNode fd:
                     EmitClosureBody(fd);
                     break;
@@ -354,64 +405,90 @@ namespace Weft.Language.Compilation {
             CompileExpression(bin.Left);
             CompileExpression(bin.Right);
 
-            switch (bin.Operator) {
-                case "+":
-                    Emit(Op.Add);
-                    break;
-                case "-":
-                    Emit(Op.Sub);
-                    break;
-                case "*":
-                    Emit(Op.Mul);
-                    break;
-                case "/":
-                    Emit(Op.Div);
-                    break;
-                case "%":
-                    Emit(Op.Mod);
-                    break;
-                case "==":
-                    Emit(Op.Eq);
-                    break;
-                case "!=":
-                    Emit(Op.Neq);
-                    break;
-                case "<":
-                    Emit(Op.Lt);
-                    break;
-                case ">":
-                    Emit(Op.Gt);
-                    break;
-                case "<=":
-                    Emit(Op.Lte);
-                    break;
-                case ">=":
-                    Emit(Op.Gte);
-                    break;
-                default:
-                    SetError($"Unknown binary operator '{bin.Operator}'");
-                    break;
-            }
+            EmitBinaryOp(bin.Operator);
         }
 
         private void CompileIncDec(IncDecNode inc) {
-            if (inc.IsPrefix) {
-                ResolveVariable(inc.Name, isStore: false);
-
-                Emit(Op.Const, chunk.AddConstant(1.0));
-                Emit(inc.IsIncrement ? Op.Add : Op.Sub);
-
-                ResolveVariable(inc.Name, isStore: true);
+            if (inc.Target is IdentifierNode id) {
+                if (inc.IsPrefix) {
+                    ResolveVariable(id.Name, isStore: false);
+                    
+                    Emit(Op.Const, chunk.AddConstant(1.0));
+                    Emit(inc.IsIncrement ? Op.Add : Op.Sub);
+                    
+                    ResolveVariable(id.Name, isStore: true);
+                }
+                else {
+                    ResolveVariable(id.Name, isStore: false);
+                    ResolveVariable(id.Name, isStore: false);
+                    
+                    Emit(Op.Const, chunk.AddConstant(1.0));
+                    Emit(inc.IsIncrement ? Op.Add : Op.Sub);
+                    
+                    ResolveVariable(id.Name, isStore: true);
+                    Emit(Op.Pop);
+                }
+            }
+            else if (inc.Target is IndexAccessNode idx) {
+                CompileExpression(idx.Target);
+                CompileExpression(idx.Index);
+                
+                Emit(Op.Dup2);
+                Emit(Op.Call, chunk.AddConstant("__index_get"), 2);
+                
+                if (inc.IsPrefix) {
+                    Emit(Op.Const, chunk.AddConstant(1.0));
+                    Emit(inc.IsIncrement ? Op.Add : Op.Sub);
+                    
+                    Emit(Op.Dup);
+                    Emit(Op.InsertUnder, 3);
+                    
+                    Emit(Op.Call, chunk.AddConstant("__index_set"), 3);
+                    Emit(Op.Pop);
+                }
+                else {
+                    Emit(Op.Dup);
+                    Emit(Op.Const, chunk.AddConstant(1.0));
+                    Emit(inc.IsIncrement ? Op.Add : Op.Sub);
+                    
+                    Emit(Op.InsertUnder, 1);
+                    Emit(Op.InsertUnder, 3);
+                    
+                    Emit(Op.Call, chunk.AddConstant("__index_set"), 3);
+                    Emit(Op.Pop);
+                }
+            }
+            else if (inc.Target is MemberAccessNode mem) {
+                CompileExpression(mem.Target);
+                Emit(Op.Const, chunk.AddConstant(mem.Member));
+    
+                Emit(Op.Dup2);
+                Emit(Op.Call, chunk.AddConstant("__member_get"), 2);
+    
+                if (inc.IsPrefix) {
+                    Emit(Op.Const, chunk.AddConstant(1.0));
+                    Emit(inc.IsIncrement ? Op.Add : Op.Sub);
+        
+                    Emit(Op.Dup);
+                    Emit(Op.InsertUnder, 3);
+        
+                    Emit(Op.Call, chunk.AddConstant("__member_set"), 3);
+                    Emit(Op.Pop);
+                }
+                else {
+                    Emit(Op.Dup);
+                    Emit(Op.Const, chunk.AddConstant(1.0));
+                    Emit(inc.IsIncrement ? Op.Add : Op.Sub);
+        
+                    Emit(Op.InsertUnder, 1);
+                    Emit(Op.InsertUnder, 3);
+        
+                    Emit(Op.Call, chunk.AddConstant("__member_set"), 3);
+                    Emit(Op.Pop);
+                }
             }
             else {
-                ResolveVariable(inc.Name, isStore: false);
-                ResolveVariable(inc.Name, isStore: false);
-
-                Emit(Op.Const, chunk.AddConstant(1.0));
-                Emit(inc.IsIncrement ? Op.Add : Op.Sub);
-
-                ResolveVariable(inc.Name, isStore: true);
-                Emit(Op.Pop);
+                SetError("Invalid target for increment/decrement operator.");
             }
         }
 
@@ -751,6 +828,47 @@ namespace Weft.Language.Compilation {
 
             for (var i = 0; i < toPop; i++)
                 Emit(Op.Pop);
+        }
+        
+        private void EmitBinaryOp(string op) {
+            switch (op) {
+                case "+":
+                    Emit(Op.Add);
+                    break;
+                case "-":
+                    Emit(Op.Sub);
+                    break;
+                case "*":
+                    Emit(Op.Mul);
+                    break;
+                case "/":
+                    Emit(Op.Div);
+                    break;
+                case "%":
+                    Emit(Op.Mod);
+                    break;
+                case "==":
+                    Emit(Op.Eq);
+                    break;
+                case "!=":
+                    Emit(Op.Neq);
+                    break;
+                case "<":
+                    Emit(Op.Lt);
+                    break;
+                case ">":
+                    Emit(Op.Gt);
+                    break;
+                case "<=":
+                    Emit(Op.Lte);
+                    break;
+                case ">=":
+                    Emit(Op.Gte);
+                    break;
+                default:
+                    SetError($"Unknown binary operator '{op}'");
+                    break;
+            }
         }
 
         private void EmitRaw(int value) {
