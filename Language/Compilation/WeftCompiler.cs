@@ -34,9 +34,10 @@ namespace Weft.Language.Compilation {
             }
         }
 
-        private struct LoopContext {
+        private class LoopContext {
             public int continueTarget;
             public List<int> breakJumps;
+            public List<int> continueJumps;
             public int scopeDepth;
         }
 
@@ -469,12 +470,10 @@ namespace Weft.Language.Compilation {
 
         private void CompileFor(ForNode f) {
             BeginScope();
-
             CompileStatement(f.Init);
 
             var loopStart = chunk.code.Count;
-
-            var ctx = PushLoop(loopStart);
+            var ctx = PushLoop(-1);
 
             CompileExpression(f.Condition);
             var exitJump = EmitJump(Op.JumpIfFalse);
@@ -482,10 +481,12 @@ namespace Weft.Language.Compilation {
             CompileBlock(f.Body);
 
             var stepStart = chunk.code.Count;
-            ctx.continueTarget = stepStart;
+            
+            foreach (var jump in ctx.continueJumps) {
+                PatchJump(jump, stepStart);
+            }
 
             CompileStatement(f.Step);
-
             Emit(Op.Jump, loopStart);
             PatchJump(exitJump);
 
@@ -495,11 +496,15 @@ namespace Weft.Language.Compilation {
 
         private void CompileDoWhile(DoWhileNode dw) {
             var loopStart = chunk.code.Count;
-            var ctx = PushLoop(loopStart);
+            var ctx = PushLoop(-1);
 
             CompileBlock(dw.Body);
-
-            ctx.continueTarget = chunk.code.Count;
+            
+            var condStart = chunk.code.Count;
+            
+            foreach (var jump in ctx.continueJumps) {
+                PatchJump(jump, condStart);
+            }
 
             CompileExpression(dw.Condition);
             var jumpBack = EmitJump(Op.JumpIfTrue);
@@ -579,7 +584,14 @@ namespace Weft.Language.Compilation {
 
             var ctx = loopStack.Peek();
             EmitLoopExit(ctx);
-            Emit(Op.Jump, ctx.continueTarget);
+            
+            if (ctx.continueTarget != -1) {
+                Emit(Op.Jump, ctx.continueTarget);
+            }
+            else {
+                var jump = EmitJump(Op.Jump);
+                ctx.continueJumps.Add(jump);
+            }
         }
 
         private void CompileBlock(BlockNode block) {
@@ -655,6 +667,7 @@ namespace Weft.Language.Compilation {
             var ctx = new LoopContext {
                 continueTarget = continueTarget,
                 breakJumps = new List<int>(),
+                continueJumps = new List<int>(),
                 scopeDepth = current.scopeDepth
             };
             loopStack.Push(ctx);
