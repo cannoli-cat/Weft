@@ -12,7 +12,9 @@
             </VisualElement>
             <VisualElement name="EditorPanel">
                 <VisualElement name="EditorArea">
-                    <weft:ScriptEditor/>
+                    <ScrollView name ="ScriptScroll">
+                        <weft:ScriptEditor/>
+                    </ScrollView>
                 </VisualElement>
                 <VisualElement name="ScriptButtonContainer">
                     <Button name="RunButton" text="Run"/>

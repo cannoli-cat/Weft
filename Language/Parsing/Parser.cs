@@ -119,98 +119,52 @@ namespace Weft.Language.Parsing {
         }
         
         private AstNode ParseIdentifierStatement(ParseResult result) {
-            Advance();
-            var name = Previous().Value;
+            var expr = ParseExpression(result);
+            if (result.HasError) return null;
 
-            if (Match(TokenType.Symbol, "[")) {
-                Require(LanguageFeatures.Collections, "Collections not enabled", result);
-                if (result.HasError) return null;
-
-                var index = ParseExpression(result);
-                if (result.HasError) return null;
-
-                Consume(TokenType.Symbol, "]", result, "Expected ']'");
-                if (result.HasError) return null;
-
-                Consume(TokenType.Operator, "=", result, "Expected '=' after index");
-                if (result.HasError) return null;
-
+            if (Match(TokenType.Operator, "=")) {
                 var value = ParseExpression(result);
-                if (result.HasError) return null; 
-
-                Consume(TokenType.Symbol, ";", result, "Expected ';'");
-                return new IndexAssignNode(new IdentifierNode(name), index, value) { Line = Previous().Line };
-            }
-
-            if (Match(TokenType.Symbol, ".")) {
-                Require(LanguageFeatures.Collections, "Collections not enabled", result);
                 if (result.HasError) return null;
+        
+                Consume(TokenType.Symbol, ";", result, "Expected ';' after assignment");
 
-                var member = Consume(TokenType.Identifier, result, "Expected member name after '.'");
-                if (result.HasError) return null;
-
-                if (Match(TokenType.Symbol, "(")) {
-                    var args = new List<AstNode> { new IdentifierNode(name) };
-
-                    if (!Match(TokenType.Symbol, ")")) {
-                        do {
-                            args.Add(ParseExpression(result));
-                        } while (Match(TokenType.Symbol, ","));
-
-                        Consume(TokenType.Symbol, ")", result, "Expected ')'");
-                    }
-
-                    if (result.HasError) return null;
-                    Consume(TokenType.Symbol, ";", result, "Expected ';' after method call");
-
-                    return new FunctionCallNode($"__{member.Value}", args) { Line = Previous().Line };
+                if (expr is IdentifierNode id) {
+                    return new AssignmentNode(id.Name, value) { Line = id.Line };
+                } 
+                else if (expr is IndexAccessNode idx) {
+                    return new IndexAssignNode(idx.Target, idx.Index, value) { Line = idx.Line };
                 }
 
-                Consume(TokenType.Symbol, ";", result, "Expected ';'");
-                return new ExprStmtNode(new MemberAccessNode(new IdentifierNode(name), member.Value))
-                    { Line = Previous().Line };
+                SetError(result, "Invalid assignment target.");
+                return null;
             }
-
-            // postfix ++ / --
-            if (Match(TokenType.Operator, "++") || Match(TokenType.Operator, "--")) {
-                var isInc = Previous().Value == "++";
-                Consume(TokenType.Symbol, ";", result, "Expected ';' after increment/decrement");
-                return new ExprStmtNode(new IncDecNode(name, isIncrement: isInc, isPrefix: false))
-                    { Line = Previous().Line };
-            }
-
-            // augmented assignment
+            
             if (Match(TokenType.Operator, "+=") || Match(TokenType.Operator, "-=") ||
                 Match(TokenType.Operator, "*=") || Match(TokenType.Operator, "/=") ||
                 Match(TokenType.Operator, "%=")) {
+        
                 Require(LanguageFeatures.AugAssign, "Augmented assignment disabled", result);
                 if (result.HasError) return null;
 
                 var op = Previous().Value[0].ToString();
                 var rhs = ParseExpression(result);
                 if (result.HasError) return null;
+        
                 Consume(TokenType.Symbol, ";", result, "Expected ';' after assignment");
-                return new AssignmentNode(name, new BinaryOperationNode(new IdentifierNode(name), op, rhs))
-                    { Line = Previous().Line };
-            }
 
-            // simple assignment
-            if (Match(TokenType.Operator, "=")) {
-                var valueExpr = ParseExpression(result);
-                if (result.HasError) return null;
-                Consume(TokenType.Symbol, ";", result, "Expected ';' after assignment");
-                return new AssignmentNode(name, valueExpr) { Line = Previous().Line };
-            }
+                if (expr is IdentifierNode id) {
+                    return new AssignmentNode(id.Name, new BinaryOperationNode(id, op, rhs)) { Line = id.Line };
+                } 
+                else if (expr is IndexAccessNode idx) {
+                    return new IndexAssignNode(idx.Target, idx.Index, new BinaryOperationNode(expr, op, rhs)) { Line = idx.Line };
+                }
 
-            // function call
-            if (Match(TokenType.Symbol, "(")) {
-                var funcCall = ParseFunctionCall(name, result);
-                Consume(TokenType.Symbol, ";", result, "Expected ';' after function call");
-                return funcCall;
+                SetError(result, "Invalid augmented assignment target.");
+                return null;
             }
-
-            SetError(result, $"Unexpected identifier: {name}");
-            return null;
+            
+            Consume(TokenType.Symbol, ";", result, "Expected ';'");
+            return new ExprStmtNode(expr) { Line = expr.Line };
         }
 
         private AstNode ParseFuncDecl(ParseResult result) {

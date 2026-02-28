@@ -362,13 +362,11 @@ namespace Weft.Language.Compilation {
 
                         break;
                     }
+                    
                     case Op.Not: {
                         if (sp < 1) return MakeError("Stack underflow", instrPc);
 
-                        if (stack[sp - 1] is not bool bv)
-                            return MakeError("Cannot apply '!' to a non-boolean value", instrPc);
-
-                        stack[sp - 1] = !bv;
+                        stack[sp - 1] = !IsTruthy(stack[sp - 1]);
 
                         break;
                     }
