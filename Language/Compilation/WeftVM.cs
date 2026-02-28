@@ -21,7 +21,7 @@ namespace Weft.Language.Compilation {
         private readonly object[] globals = new object[MaxGlobals];
         private readonly object[] stack = new object[MaxStack];
         private readonly CallFrame[] frames = new CallFrame[MaxFrames];
-        private readonly List<UpvalueCell> openUpvalues = new();
+        private readonly Dictionary<int, UpvalueCell> openUpvalues = new();
 
         public bool Completed { get; private set; }
         
@@ -496,6 +496,10 @@ namespace Weft.Language.Compilation {
                         catch (Exception ex) {
                             return MakeError($"Function '{funcName}' failed: {ex.Message}", instrPc);
                         }
+                        finally {
+                            if (argc < ArgPool.Length)
+                                for (var i = 0; i < argc; i++) args[i] = null;
+                        }
 
                         break;
                     }
@@ -580,27 +584,29 @@ namespace Weft.Language.Compilation {
         }
 
         private UpvalueCell CaptureUpvalue(int slot) {
-            for (var i = 0; i < openUpvalues.Count; i++) {
-                if (!openUpvalues[i].isClosed && openUpvalues[i].location == slot)
-                    return openUpvalues[i];
-            }
+            if (openUpvalues.TryGetValue(slot, out var existing) && !existing.isClosed)
+                return existing;
 
             var cell = new UpvalueCell(slot);
-
-            openUpvalues.Add(cell);
+            openUpvalues[slot] = cell;
             return cell;
         }
 
         private void CloseUpvaluesFrom(int fromSlot) {
-            for (var i = openUpvalues.Count - 1; i >= 0; i--) {
-                var cell = openUpvalues[i];
+            List<int> toRemove = null;
+            foreach (var (key, cell) in openUpvalues) {
                 if (cell.isClosed || cell.location < fromSlot) continue;
 
                 cell.value = stack[cell.location];
                 cell.isClosed = true;
 
-                openUpvalues.RemoveAt(i);
+                toRemove ??= new List<int>();
+                toRemove.Add(key);
             }
+
+            if (toRemove != null)
+                foreach (var key in toRemove)
+                    openUpvalues.Remove(key);
         }
         
         private bool CheckStack(int needed, int instrPc, out ExecutionResult err) {

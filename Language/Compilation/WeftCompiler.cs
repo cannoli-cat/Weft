@@ -103,6 +103,14 @@ namespace Weft.Language.Compilation {
                     if (ret.Value != null) CompileExpression(ret.Value);
                     else Emit(Op.Const, chunk.AddConstant(null));
 
+                    // close any captured locals in the current function scope
+                    for (var i = current.locals.Count - 1; i >= 0; i--) {
+                        if (current.locals[i].isCaptured) {
+                            Emit(Op.CloseUpvalues, 0);
+                            break;
+                        }
+                    }
+
                     Emit(Op.Return);
                     break;
 

@@ -40,5 +40,7 @@ namespace Weft.Language.Compilation {
 
             return res;
         }
+        
+        public static void ResetPidCounter() => _nextPid = 1;
     }
 }

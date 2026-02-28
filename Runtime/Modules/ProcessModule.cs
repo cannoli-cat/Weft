@@ -23,16 +23,12 @@ namespace Weft.Runtime.Modules {
                 var engine = WeftEngine.Instance;
                 if (engine == null) throw new InvalidOperationException("WeftEngine not available.");
 
-                // inherit the caller's console so output goes to the same place
                 WeftConsoleService console = null;
                 if (ctx.Services is WeftServiceProvider sp)
                     sp.TryGet(out console);
 
-                var time = new WeftUnityTimeService();
-                var childServices = new WeftServiceProvider()
-                    .Add(console ?? new WeftConsoleService((m, _) => UnityEngine.Debug.Log(m)))
-                    .Add(time)
-                    .Add<ITimeService>(time);
+                var childServices = new WeftServiceProvider();
+                if (console != null) childServices.Add(console);
 
                 var childCtx = new ScriptContext(engine.Options.Capabilities) {
                     Services = childServices
