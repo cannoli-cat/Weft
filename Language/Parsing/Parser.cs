@@ -296,29 +296,8 @@ namespace Weft.Language.Parsing {
         }
         
         private AstNode ParseForStep(ParseResult res) {
-            if (Match(TokenType.Operator, "++") || Match(TokenType.Operator, "--")) {
-                var op = Previous().Value;
-                var target = ParsePostfix(res);
-                if (res.HasError || target == null) return null;
-                return new ExprStmtNode(new IncDecNode(target, isIncrement: op == "++", isPrefix: true)) { Line = target.Line };
-            }
-
-            var expr = ParsePostfix(res);
+            var expr = ParseUnary(res);
             if (res.HasError || expr == null) return null;
-
-            if (Match(TokenType.Operator, "++"))
-                return new ExprStmtNode(new IncDecNode(expr, true, false)) { Line = expr.Line };
-            if (Match(TokenType.Operator, "--"))
-                return new ExprStmtNode(new IncDecNode(expr, false, false)) { Line = expr.Line };
-
-            if (Match(TokenType.Operator, "+=") || Match(TokenType.Operator, "-=") ||
-                Match(TokenType.Operator, "*=") || Match(TokenType.Operator, "/=") ||
-                Match(TokenType.Operator, "%=")) {
-                var op = Previous().Value[0].ToString();
-                var rhs = ParseExpression(res);
-                if (res.HasError) return null;
-                return new ExprStmtNode(new AugAssignNode(expr, op, rhs) { Line = expr.Line });
-            }
 
             if (Match(TokenType.Operator, "=")) {
                 var rhs = ParseExpression(res);
@@ -333,6 +312,21 @@ namespace Weft.Language.Parsing {
         
                 SetError(res, "Invalid assignment target in for-step.");
                 return null;
+            }
+            
+            if (Match(TokenType.Operator, "+=") || Match(TokenType.Operator, "-=") ||
+                Match(TokenType.Operator, "*=") || Match(TokenType.Operator, "/=") ||
+                Match(TokenType.Operator, "%=")) {
+        
+                var op = Previous().Value[0].ToString();
+                var rhs = ParseExpression(res);
+                if (res.HasError) return null;
+        
+                return new ExprStmtNode(new AugAssignNode(expr, op, rhs) { Line = expr.Line });
+            }
+
+            if (expr is IncDecNode || expr is FunctionCallNode) {
+                return new ExprStmtNode(expr) { Line = expr.Line };
             }
 
             SetError(res, "Invalid expression in for-step.");
