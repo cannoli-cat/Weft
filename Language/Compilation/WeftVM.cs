@@ -67,6 +67,13 @@ namespace Weft.Language.Compilation {
                 var op = (Op)code[pc++];
 
                 switch (op) {
+                    case Op.Dup: {
+                        if (sp < 1) return MakeError("Stack underflow on dup", instrPc);
+                        stack[sp] = stack[sp - 1];
+                        sp++;
+                        break;
+                    }
+
                     case Op.Closure: {
                         var funcPc = code[pc++];
                         var arity = code[pc++];
@@ -77,10 +84,17 @@ namespace Weft.Language.Compilation {
                             var isLocal = code[pc++] == 1;
                             var index = code[pc++];
 
-                            if (isLocal)
+                            if (isLocal) {
                                 ups[i] = CaptureUpvalue(frames[frameCount - 1].baseSlot + index);
-                            else
-                                ups[i] = frames[frameCount - 1].upvalues[index];
+                            } 
+                            else {
+                                var parentUps = frames[frameCount - 1].upvalues;
+                                
+                                if (parentUps == null || index < 0 || index >= parentUps.Length)
+                                    return MakeError($"Invalid upvalue index {index} in closure", instrPc);
+                                
+                                ups[i] = parentUps[index];
+                            }
                         }
 
                         stack[sp++] = new WeftClosure(funcPc, arity, ups);
@@ -120,18 +134,30 @@ namespace Weft.Language.Compilation {
 
                     case Op.LoadUpvalue: {
                         var idx = code[pc++];
-                        var cell = frames[frameCount - 1].upvalues[idx];
+                        var upvalues = frames[frameCount - 1].upvalues;
+                        
+                        if (upvalues == null || idx < 0 || idx >= upvalues.Length)
+                            return MakeError($"Invalid upvalue index {idx}", instrPc);
+                        
+                        var cell = upvalues[idx];
                         stack[sp++] = cell.isClosed ? cell.value : stack[cell.location];
                         break;
                     }
 
                     case Op.StoreUpvalue: {
                         var idx = code[pc++];
-                        var cell = frames[frameCount - 1].upvalues[idx];
+                        var upvalues = frames[frameCount - 1].upvalues;
+                        
+                        if (upvalues == null || idx < 0 || idx >= upvalues.Length)
+                            return MakeError($"Invalid upvalue index {idx}", instrPc);
+                        
+                        var cell = upvalues[idx];
+                        
                         if (cell.isClosed)
                             cell.value = stack[sp - 1];
                         else
                             stack[cell.location] = stack[sp - 1];
+                        
                         break;
                     }
 

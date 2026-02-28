@@ -2,6 +2,7 @@ namespace Weft.Language.Compilation {
     public enum Op : byte {
         Const,
         Pop,
+        Dup,
         
         LoadLocal,
         StoreLocal,

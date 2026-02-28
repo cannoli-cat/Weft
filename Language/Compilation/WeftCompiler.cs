@@ -244,15 +244,17 @@ namespace Weft.Language.Compilation {
 
                 case FunctionCallNode call:
                     if (call.FunctionName == "__forEach") {
+                        BeginScope();
+    
                         CompileExpression(call.Arguments[0]);
                         current.locals.Add(new Local { name = "$arr", depth = current.scopeDepth });
-                        
+    
                         CompileExpression(call.Arguments[1]);
                         current.locals.Add(new Local { name = "$fn", depth = current.scopeDepth });
-                        
+    
                         Emit(Op.Const, chunk.AddConstant(0.0));
                         current.locals.Add(new Local { name = "$i", depth = current.scopeDepth });
-                        
+    
                         var loopStart = chunk.code.Count;
 
                         Emit(Op.LoadLocal, current.locals.Count - 1);
@@ -267,29 +269,22 @@ namespace Weft.Language.Compilation {
                         Emit(Op.LoadLocal, current.locals.Count - 3);
                         Emit(Op.LoadLocal, current.locals.Count - 1);
                         Emit(Op.Call, chunk.AddConstant("__index_get"), 2);
-                        
-                        Emit(Op.LoadLocal, current.locals.Count - 2); // $fn
+    
+                        Emit(Op.LoadLocal, current.locals.Count - 2);
                         Emit(Op.CallClosure, 1);
-                        
+    
                         Emit(Op.Pop);
-                        
-                        Emit(Op.LoadLocal, current.locals.Count - 1); // $i
+    
+                        Emit(Op.LoadLocal, current.locals.Count - 1);
                         Emit(Op.Const, chunk.AddConstant(1.0));
                         Emit(Op.Add);
-                        Emit(Op.StoreLocal, current.locals.Count - 1); // $i = result
+                        Emit(Op.StoreLocal, current.locals.Count - 1);
                         Emit(Op.Pop);
 
                         Emit(Op.Jump, loopStart);
                         PatchJump(exitJump);
-                        
-                        current.locals.RemoveAt(current.locals.Count - 1);
-                        Emit(Op.Pop);
-                        
-                        current.locals.RemoveAt(current.locals.Count - 1);
-                        Emit(Op.Pop);
-                        
-                        current.locals.RemoveAt(current.locals.Count - 1);
-                        Emit(Op.Pop);
+    
+                        EndScope();
 
                         Emit(Op.Const, chunk.AddConstant(null));
                     }
@@ -333,22 +328,24 @@ namespace Weft.Language.Compilation {
         private void CompileBinary(BinaryOperationNode bin) {
             if (bin.Operator == "&&") {
                 CompileExpression(bin.Left);
-                var jumpToFalse = EmitJump(Op.JumpIfFalse);
+                
+                Emit(Op.Dup);
+                var jumpToEnd = EmitJump(Op.JumpIfFalse);
+                Emit(Op.Pop);
+                
                 CompileExpression(bin.Right);
-                var jumpToEnd = EmitJump(Op.Jump);
-                PatchJump(jumpToFalse);
-                Emit(Op.Const, chunk.AddConstant(false));
                 PatchJump(jumpToEnd);
                 return;
             }
 
             if (bin.Operator == "||") {
                 CompileExpression(bin.Left);
-                var jumpToTrue = EmitJump(Op.JumpIfTrue);
+                Emit(Op.Dup);
+                
+                var jumpToEnd = EmitJump(Op.JumpIfTrue);
+                Emit(Op.Pop);
+                
                 CompileExpression(bin.Right);
-                var jumpToEnd = EmitJump(Op.Jump);
-                PatchJump(jumpToTrue);
-                Emit(Op.Const, chunk.AddConstant(true));
                 PatchJump(jumpToEnd);
                 return;
             }
