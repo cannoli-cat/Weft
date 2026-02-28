@@ -57,7 +57,7 @@ namespace Weft.Language.Compilation {
 
             while (pc < code.Count) {
                 if (--gas <= 0)
-                    return MakeError("Gas limit exceeded", pc);
+                    return ExecutionResult.YieldUntil(0);
 
                 var instrPc = pc;
 
@@ -94,12 +94,22 @@ namespace Weft.Language.Compilation {
                         if (obj is not WeftClosure closure)
                             return MakeError("Cannot call non-function value", instrPc);
 
-                        if (frameCount >= frames.Length)
-                            return MakeError("Stack overflow: too many nested calls", instrPc);
+                        var expectedArity = closure.arity;
+                        var baseSlot = sp - argc;
+
+                        while (argc < expectedArity) {
+                            stack[sp++] = null;
+                            argc++;
+                        }
+                        
+                        while (argc > expectedArity) {
+                            sp--;
+                            argc--;
+                        }
 
                         frames[frameCount++] = new CallFrame {
                             returnPc = pc,
-                            baseSlot = sp - argc,
+                            baseSlot = baseSlot,
                             funcStartPc = closure.funcPc,
                             upvalues = closure.upvalues
                         };
@@ -379,7 +389,7 @@ namespace Weft.Language.Compilation {
                                 switch (y) {
                                     case YieldForSeconds ys: {
                                         var time = context.Resolve<ITimeService>();
-                                        stack[sp++] = null;
+                                        stack[sp++] = ys.ReturnValue;
                                         return ExecutionResult.YieldUntil(time.Now + ys.Seconds);
                                     }
                                     case YieldForProcess yp:

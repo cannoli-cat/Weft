@@ -38,9 +38,8 @@ namespace Weft.Demos.RobotDemo.Scripts {
 
         [WeftFunction("move")]
         private object Move(ScriptContext ctx) {
-            var g = GetGrid(ctx);
-            var ok = g.MoveForward();
-            if (stepDelay > 0) return new YieldForSeconds(stepDelay);
+            var ok = GetGrid(ctx).MoveForward();
+            if (stepDelay > 0) return new YieldForSeconds(stepDelay, ok);
             return ok;
         }
 

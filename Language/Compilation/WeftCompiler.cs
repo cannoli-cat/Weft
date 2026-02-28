@@ -9,7 +9,7 @@ namespace Weft.Language.Compilation {
         private FuncScope current;
         private int currentLine, globalCount;
 
-        private readonly Stack<LoopContext> loopStack = new();
+        private Stack<LoopContext> loopStack = new();
         private readonly Dictionary<string, int> globals = new();
 
         private struct Local {
@@ -530,6 +530,9 @@ namespace Weft.Language.Compilation {
             var inner = new FuncScope(current);
             current = inner;
 
+            var savedLoopStack = new Stack<LoopContext>(loopStack);
+            loopStack.Clear(); 
+
             foreach (var param in fd.Parameters)
                 current.locals.Add(new Local { name = param, depth = 0 });
 
@@ -538,6 +541,8 @@ namespace Weft.Language.Compilation {
 
             Emit(Op.Const, chunk.AddConstant(null));
             Emit(Op.Return);
+            
+            loopStack = savedLoopStack;
 
             var upvalues = new List<UpvalueEntry>(current.upvalues);
             current = current.enclosing;

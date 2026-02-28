@@ -3,7 +3,11 @@
     
     public sealed class YieldForSeconds : IYieldRequest {
         public double Seconds { get; }
-        
-        public YieldForSeconds(double seconds) => Seconds = seconds;
+        public object ReturnValue { get; }
+    
+        public YieldForSeconds(double seconds, object returnValue = null) {
+            Seconds = seconds;
+            ReturnValue = returnValue;
+        }
     }
 }

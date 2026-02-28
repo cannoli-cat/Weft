@@ -20,7 +20,7 @@ namespace Weft.Unity.Engine {
         public WeftOptions Options { get; private set; }
         private readonly WeftScheduler scheduler = new();
 
-        private readonly Dictionary<int, CachedScript> scriptCache = new();
+        private readonly Dictionary<string, CachedScript> scriptCache = new();
 
         private struct CachedScript {
             public WeftChunk chunk;
@@ -150,7 +150,7 @@ namespace Weft.Unity.Engine {
         }
 
         private (WeftChunk chunk, string error) CompileOrCache(string source) {
-            var key = source.GetHashCode();
+            var key = source;
     
             if (scriptCache.TryGetValue(key, out var cached)) {
                 if (cached.features == Options.Features)
