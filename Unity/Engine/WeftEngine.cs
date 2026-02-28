@@ -23,6 +23,8 @@ namespace Weft.Unity.Engine {
         private readonly WeftScheduler scheduler = new();
 
         private readonly Dictionary<string, CachedScript> scriptCache = new();
+        
+        private static readonly SHA256 Sha = SHA256.Create();
 
         private struct CachedScript {
             public WeftChunk chunk;
@@ -193,8 +195,7 @@ namespace Weft.Unity.Engine {
         }
         
         private static string HashSource(string source) {
-            using var sha = SHA256.Create();
-            var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(source));
+            var bytes = Sha.ComputeHash(Encoding.UTF8.GetBytes(source));
             return System.Convert.ToBase64String(bytes);
         }
     }

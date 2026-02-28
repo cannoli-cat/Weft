@@ -24,6 +24,18 @@ namespace Weft.Language.Compilation {
         private readonly List<UpvalueCell> openUpvalues = new();
 
         public bool Completed { get; private set; }
+        
+        private static readonly object[][] ArgPool = {
+            Array.Empty<object>(),
+            new object[1],
+            new object[2],
+            new object[3],
+            new object[4],
+            new object[5],
+            new object[6],
+            new object[7],
+            new object[8],
+        };
 
         private struct CallFrame {
             public int returnPc;
@@ -51,11 +63,11 @@ namespace Weft.Language.Compilation {
             if (Completed)
                 return ExecutionResult.SuccessResult();
 
-            var code = chunk.code;
-            var constants = chunk.constants;
+            var code = chunk.Code;
+            var constants = chunk.Constants;
             var gas = gasBudget;
 
-            while (pc < code.Count) {
+            while (pc < code.Length) {
                 if (--gas <= 0)
                     return ExecutionResult.YieldUntil(0);
 
@@ -454,7 +466,7 @@ namespace Weft.Language.Compilation {
                         var argc = code[pc++];
                         var funcName = (string)constants[nameIdx];
 
-                        var args = new object[argc];
+                        var args = argc < ArgPool.Length ? ArgPool[argc] : new object[argc];
                         for (var i = argc - 1; i >= 0; i--)
                             args[i] = stack[--sp];
 
@@ -533,7 +545,7 @@ namespace Weft.Language.Compilation {
             var trace = new List<string>();
             const int maxTraceLines = 8;
 
-            var line = errorPc < chunk.lines.Count ? chunk.lines[errorPc] : 0;
+            var line = errorPc < chunk.Lines.Length ? chunk.Lines[errorPc] : 0;
             var currentFunc = frameCount > 0 ? frames[frameCount - 1].funcStartPc : -1;
             trace.Add($"at {ResolveFuncName(currentFunc)} (line {line})");
 
@@ -543,10 +555,10 @@ namespace Weft.Language.Compilation {
             for (var i = frameCount - 1; i >= frameCount - show; i--) {
                 var retPc = frames[i].returnPc;
 
-                var callerLine = retPc > 0 && retPc < chunk.lines.Count
-                    ? chunk.lines[retPc - 1]
+                var callerLine = retPc > 0 && retPc < chunk.Lines.Length
+                    ? chunk.Lines[retPc - 1]
                     : 0;
-
+                
                 var callerFunc = frames[i - 1].funcStartPc;
 
                 trace.Add($"at {ResolveFuncName(callerFunc)} (line {callerLine})");
@@ -560,7 +572,7 @@ namespace Weft.Language.Compilation {
         }
 
         private ExecutionResult MakeError(string msg, int atPc) {
-            var line = atPc < chunk.lines.Count ? chunk.lines[atPc] : 0;
+            var line = atPc < chunk.Lines.Length ? chunk.Lines[atPc] : 0;
             var trace = BuildStackTrace(atPc);
             var err = new WeftError(ErrorPhase.Runtime, msg, line, trace);
 

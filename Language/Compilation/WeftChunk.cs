@@ -6,15 +6,20 @@ namespace Weft.Language.Compilation {
         public readonly List<object> constants = new();
         public readonly List<int> lines = new();
         public readonly Dictionary<int, string> funcNames = new(); // pc -> name
-
+        private readonly Dictionary<object, int> constantMap = new();
+        
+        public int[] Code { get; private set; }
+        public object[] Constants { get; private set; }
+        public int[] Lines { get; private set; }
+        
         public int AddConstant(object value) {
-            for (var i = 0; i < constants.Count; i++) {
-                if (Equals(constants[i], value))
-                    return i;
-            }
-            
+            if (value != null && constantMap.TryGetValue(value, out var idx))
+                return idx;
+
+            var i = constants.Count;
             constants.Add(value);
-            return constants.Count - 1;
+            if (value != null) constantMap[value] = i;
+            return i;
         }
 
         public void Emit(Op op, int line) {
@@ -42,6 +47,12 @@ namespace Weft.Language.Compilation {
             
             code.Add(operand2);
             lines.Add(line);
+        }
+        
+        public void Freeze() {
+            Code = code.ToArray();
+            Constants = constants.ToArray();
+            Lines = lines.ToArray();
         }
     }
 }

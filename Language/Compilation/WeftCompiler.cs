@@ -76,6 +76,7 @@ namespace Weft.Language.Compilation {
                     CompileStatement(node);
 
             Emit(Op.Halt);
+            chunk.Freeze();
             return chunk;
         }
 
@@ -121,7 +122,7 @@ namespace Weft.Language.Compilation {
                     else {
                         current.locals.Add(new Local { name = v.Name, depth = current.scopeDepth, isConst = v.IsConst });
                     }
-                    break;;
+                    break;
 
                 case AssignmentNode a:
                     CheckNotConst(a.Name);
