@@ -29,9 +29,12 @@ namespace Weft.Demos.ScriptsDemo.Scripts {
                     return null;
                 }
                 foreach (var item in inv.Items)
-                    console?.Print($"  {item.name} x{item.qty}");
+                    console?.Print($"  {item.Name} x{item.Quantity} (Tag: {item.Tag})");
                 return null;
             });
+            
+            registrar.Bind("getItem", (ctx, args) =>
+                ctx.Resolve<DemoInventory>().GetItem((string)args[0]));
         }
 
         public void Setup(ScriptContext ctx) {

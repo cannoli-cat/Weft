@@ -188,6 +188,29 @@ printInventory();
 "
             },
             new() {
+                name = "IWeftObject Security",
+                code = @"// Showcases safely exposing C# objects to scripts
+addItem(""magic_sword"", 1);
+
+let sword = getItem(""magic_sword"");
+print(""Found item: "" + sword.name);
+print(""Current quantity: "" + sword.quantity);
+
+// We allow scripts to freely edit the 'tag' property
+sword.tag = ""Equipped"";
+printInventory();
+
+// BUT! We block them from cheating the quantity:
+print(""\nAttempting to cheat quantity..."");
+
+// This line will throw a security exception and halt the script!
+sword.quantity = 999; 
+
+// This won't print because the script was halted
+print(""This will never print.""); 
+"
+            },
+            new() {
                 name = "Collections",
                 code = @"// Arrays. Create, access, modify
 const fruits = [""apple"", ""banana"", ""cherry""];

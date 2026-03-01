@@ -69,6 +69,10 @@ namespace Weft.Runtime.Modules {
                     return str[i].ToString();
                 }
                 
+                if (args[0] is IWeftObject obj) {
+                    return obj.GetMember(args[1]?.ToString() ?? string.Empty);
+                }
+                
                 throw new System.Exception("Index access requires an array, object, or string.");
             });
 
@@ -84,6 +88,11 @@ namespace Weft.Runtime.Modules {
                 
                 if (args[0] is Dictionary<string, object> dict) {
                     dict[args[1]?.ToString() ?? string.Empty] = args[2];
+                    return null;
+                }
+                
+                if (args[0] is IWeftObject obj) {
+                    obj.SetMember(args[1]?.ToString() ?? string.Empty, args[2]);
                     return null;
                 }
                 
@@ -108,6 +117,10 @@ namespace Weft.Runtime.Modules {
                     throw new System.Exception($"Unknown string property '{memberName}'.");
                 }
                 
+                if (args[0] is IWeftObject obj) {
+                    return obj.GetMember(memberName);
+                }
+                
                 throw new System.Exception($"Cannot access member '{memberName}' on {args[0]?.GetType().Name ?? "null"}.");
             });
 
@@ -116,6 +129,11 @@ namespace Weft.Runtime.Modules {
 
                 if (args[0] is Dictionary<string, object> dict) {
                     dict[memberName] = args[2];
+                    return null;
+                }
+                
+                if (args[0] is IWeftObject obj) {
+                    obj.SetMember(memberName, args[2]);
                     return null;
                 }
 
