@@ -389,19 +389,6 @@ namespace Weft.Language.Parsing {
             return new IfNode(node, trueExpr, falseExpr) { Line = node.Line };
         }
 
-        /*private FunctionCallNode ParseFunctionCall(string functionName, ParseResult result) {
-            var arguments = new List<AstNode>();
-            if (!Match(TokenType.Symbol, ")")) {
-                do {
-                    arguments.Add(ParseExpression(result));
-                } while (Match(TokenType.Symbol, ","));
-
-                Consume(TokenType.Symbol, ")", result, "Expected ')' after arguments");
-            }
-
-            return new FunctionCallNode(functionName, arguments) { Line = Previous().Line };
-        }*/
-
         private AstNode ParseLogicalOr(ParseResult result) {
             var node = ParseLogicalAnd(result);
             while (!IsAtEnd() && Match(TokenType.Operator, "||")) {
