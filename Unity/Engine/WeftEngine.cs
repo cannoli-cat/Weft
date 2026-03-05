@@ -77,6 +77,26 @@ namespace Weft.Unity.Engine {
 
             return Instance.Spawn(chunk, ctx);
         }
+        
+        /// <summary>
+        /// Compiles and executes a script synchronously in one call.
+        /// Does NOT use the scheduler. Returns immediately after execution.
+        /// </summary>
+        public static (string error, ScriptContext ctx) RunSync(string source, ScriptContext ctx) {
+            var (chunk, error) = Instance.CompileOrCache(source);
+            if (error != null) return (error, ctx);
+
+            ctx = Instance.PrepareContext(ctx);
+
+            var gas = ctx.GasOverride ?? Instance.Options.WeftLimits.GasPerStep;
+            var proc = new WeftBytecodeProcess(chunk, ctx, gas);
+            var result = proc.Step();
+
+            if (!result.success)
+                return (result.error, ctx);
+
+            return (null, ctx);
+        }
 
         /// <summary>
         /// Compiles and runs a Weft script, returning errors instead of throwing.
