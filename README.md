@@ -1,6 +1,6 @@
 # Weft
 
-A lightweight, sandboxed scripting language and bytecode VM for Unity. Let players and designers write game logic at runtime.
+A lightweight, sandboxed ingame scripting language and bytecode VM for Unity. Let players and designers write game logic at runtime.
 
 ![Weft Robot Demo](docs/robot-demo.gif)
 
